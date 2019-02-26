@@ -1,12 +1,11 @@
 {-# LANGUAGE EmptyDataDecls, GADTs, ExistentialQuantification #-}
 
-{-@ LIQUID "--no-adt" 	                           @-}
-{-@ LIQUID "--exact-data-con"                      @-}
-{-@ LIQUID "--higherorder"                         @-}
-{-@ LIQUID "--no-termination"                      @-}
-{-@ LIQUID "--no-totality"                      @-}
+{- LIQUID "--exact-data-con"                      @-}
+{- LIQUID "--higherorder"                         @-}
+{- LIQUID "--no-termination"                      @-}
+{- LIQUID "--no-totality"                      @-}
 {-@ LIQUID "--no-pattern-inline"                @-}
-{-@ LIQUID "--ple" @-} 
+-- {-@ LIQUID "--ple" @-} 
 
 
 module Field
@@ -43,9 +42,10 @@ data RefinedFilter record typ = RefinedFilter
 data User = User
      { userName :: String
      , userFriend :: User
+     , userSSN    :: Int
      }
 @-}
-data User = User { userName :: String, userFriend :: User }
+data User = User { userName :: String, userFriend :: User, userSSN :: Int }
     deriving (Eq, Show)
 
 {-@
@@ -65,22 +65,63 @@ data EntityField a b where
 filterUserName :: String -> RefinedFilter User String 
 filterUserName val = RefinedFilter UserName val EQUAL
 
+
+{-@ filterUserSSN ::
+       val: Int -> RefinedFilter<{\row -> userSSN row == val}, {\row v -> v = row}> User Int @-}
+filterUserSSN :: Int -> RefinedFilter User Int 
+filterUserSSN val = RefinedFilter UserSSN val EQUAL
+
+
 {-@ filterUserFriend ::
        val: User -> RefinedFilter<{\row -> userFriend row == val}, {\row v -> v = userFriend row}> User User @-}
 filterUserFriend :: User -> RefinedFilter User User 
 filterUserFriend val = RefinedFilter UserFriend val EQUAL
 
+       
 -- | r is the postcondition of the filter,
 --   p is the policy of the result
 --   q is the per-row policy
-{-@ assume selectUser :: forall <r :: User -> Bool, q :: User -> User -> Bool, p :: User -> Bool>.
-                         { row :: User<r> |- User<p> <: User<q row> }
-                         f: (RefinedFilter<r, q> User typ) -> Tagged<p> [User<r>]
+{-@ assume selectUser :: forall <r1 :: User -> Bool, r :: User -> Bool, q :: User -> User -> Bool, p :: User -> Bool>.
+                         { row :: User<r1> |- User<p> <: User<q row> }
+                         { User<r> <: User<r1> }
+                         f: (RefinedFilter<r1, q> User typ) -> Tagged<p> [User<r>]
 @-}
 selectUser ::
       RefinedFilter User typ
       -> Tagged [User]
 selectUser fs = undefined
+
+
+-- | r is the postcondition of the filter,
+--   p is the policy of the result
+--   q is the per-row policy
+{-@ assume selectUserOrig :: forall <r :: User -> Bool, q :: User -> User -> Bool, p :: User -> Bool>.
+                         { row :: User<r> |- User<p> <: User<q row> }
+                         f: (RefinedFilter<r, q> User typ) -> Tagged<p> [User<r>]
+@-}
+selectUserOrig ::
+      RefinedFilter User typ
+      -> Tagged [User]
+selectUserOrig fs = undefined
+
+-- | r is the postcondition of the filter,
+--   p is the policy of the result
+--   q is the per-row policy
+{-@ assume selectUser2 :: forall <r1 :: User -> Bool, q1 :: User -> User -> Bool,
+                                  r2 :: User -> Bool, q2 :: User -> User -> Bool, p :: User -> Bool,
+                                  r  :: User -> Bool>.
+                         { row :: User<r> |- User<p> <: User<q1 row> }
+                         { row :: User<r> |- User<p> <: User<q2 row> }
+                         { User<r> <: User<r1> }
+                         { User<r> <: User<r2> }
+                         f: (RefinedFilter<r1, q1> User typ) ->
+                         g: (RefinedFilter<r2, q2> User typ2) -> Tagged<p> [User<r>]
+@-}
+selectUser2 ::
+      RefinedFilter User typ
+      -> RefinedFilter User typ2
+      -> Tagged [User]
+selectUser2 fs fs' = undefined
 
 {-@ assume projectUser :: forall <r :: User -> Bool, q :: User -> User -> Bool, p :: User -> Bool>.
                          { row :: User<r> |- User<p> <: User<q row> }
@@ -127,7 +168,11 @@ aliceName = ['a', 'l', 'i', 'c', 'e']
 
 {-@ reflect alice @-}
 alice :: User
-alice = User aliceName alice
+alice = User aliceName alice 1
+
+{-@ reflect aliceSSN@-}
+aliceSSN :: Int
+aliceSSN = 1
 
 -- | This is fine: policy on friends is self-referential,
 -- so alice can see all users who are friends with her
@@ -135,6 +180,26 @@ alice = User aliceName alice
 @-}
 good :: Tagged [User]
 good = selectUser (filterUserFriend alice)
+
+-- -- | This is fine: policy on friends is self-referential,
+-- -- so alice can see all users who are friends with her
+{-@ goodtest :: a:User->Tagged<{\v -> v == alice}> [{v: User | v==alice}]
+@-}
+goodtest :: User -> Tagged [User]
+goodtest a = selectUser2 (filterUserName aliceName) (filterUserSSN aliceSSN )
+
+-- -- | This is fine: policy on friends is self-referential,
+-- -- so alice can see all users who are friends with her
+-- {-@ goodshouldbe :: Tagged<{\v -> v == alice}> [{v: User | userName v == aliceName}]
+-- @-}
+-- goodshouldbe :: Tagged [User]
+-- goodshouldbe = selectUser (filterUserName aliceName)
+
+-- {-@ goodshouldbe1 :: Tagged<{\v -> v == alice}> [User]
+-- @-}
+-- goodshouldbe1 :: Tagged [User]
+-- goodshouldbe1 = selectUserOrig (filterUserSSN aliceSSN)
+
 
 -- | This is fine: alice can see both the filtered rows
 -- and the name field in each of these rows
@@ -145,6 +210,7 @@ names = do
   rows <- selectUser (filterUserFriend alice)
   projectUser rows UserName
 
+{-
 -- | This is bad: the result of the query is not public
 {-@ bad1 :: Tagged<{\v -> true}> [{v: User | userFriend v == alice}]
 @-}
@@ -165,13 +231,11 @@ badSSNs :: Tagged [Int]
 badSSNs = do
   rows <- selectUser (filterUserFriend alice)
   projectUser rows UserSSN
-  
+  -}
 {-@ mySSN :: Tagged<{\v -> v == alice}> [Int]
 @-}  
 mySSN :: Tagged [Int]
 mySSN = projectUser [alice] UserSSN
-  
-  
   
 
 
