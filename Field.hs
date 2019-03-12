@@ -36,45 +36,49 @@ data RefinedFilter record typ = RefinedFilter
     { refinedFilterField  :: EntityField record typ
     , refinedFilterValue  :: typ
     , refinedFilterFilter :: RefinedPersistFilter
+    , querystring :: Sttring
     }    
     
+newtype RefinedFilter record = RefinedFilter (Filter record)
+
 {-@
 data User = User
-     { userName :: String
-     , userFriend :: User
+     { userId   :: Int,
+       userName :: String
+     , userFriend :: Int
      , userSSN    :: Int
      }
 @-}
-data User = User { userName :: String, userFriend :: User, userSSN :: Int }
+data User = User { userId::Int, userName :: String, userFriend :: Int, userSSN :: Int }
     deriving (Eq, Show)
 
 {-@
 data EntityField record typ <q :: record -> User -> Bool> where 
-   Field.UserName :: EntityField <{\row v -> v = userFriend row}> User {v:_ | True}
- | Field.UserFriend :: EntityField <{\row v -> v = userFriend row}> User {v:_ | True}
- | Field.UserSSN :: EntityField <{\row v -> v = row}> User {v:_ | True}
+   Field.UserName :: EntityField <{\row v -> userId v = userFriend row}> User {v:_ | True}
+ | Field.UserFriend :: EntityField <{\row v -> userId v = userFriend row}> User {v:_ | True}
+ | Field.UserSSN :: EntityField <{\row v -> userId v = userId row}> User {v:_ | True}
 @-}
 {-@ data variance EntityField covariant covariant contravariant @-}
 data EntityField a b where
   UserName :: EntityField User String
-  UserFriend :: EntityField User User
+  UserFriend :: EntityField User Int
   UserSSN :: EntityField User Int
 
 {-@ filterUserName ::
-       val: String -> RefinedFilter<{\row -> userName row == val}, {\row v -> v = userFriend row}> User String @-}
+       val: String -> RefinedFilter<{\row -> userName row == val}, {\row v -> userId v = userFriend row}> User String @-}
 filterUserName :: String -> RefinedFilter User String 
 filterUserName val = RefinedFilter UserName val EQUAL
 
 
 {-@ filterUserSSN ::
-       val: Int -> RefinedFilter<{\row -> userSSN row == val}, {\row v -> v = row}> User Int @-}
+       val: Int -> RefinedFilter<{\row -> userSSN row == val}, {\row v -> userId v = userId row}> User Int @-}
 filterUserSSN :: Int -> RefinedFilter User Int 
 filterUserSSN val = RefinedFilter UserSSN val EQUAL
 
 
 {-@ filterUserFriend ::
-       val: User -> RefinedFilter<{\row -> userFriend row == val}, {\row v -> v = userFriend row}> User User @-}
-filterUserFriend :: User -> RefinedFilter User User 
+       val: Int -> RefinedFilter<{\row ->userFriend row == val}, {\row v -> userId v = userFriend row}> User Int @-}
+filterUserFriend :: Int -> RefinedFilter User 
 filterUserFriend val = RefinedFilter UserFriend val EQUAL
 
        
@@ -110,18 +114,32 @@ selectUserOrig fs = undefined
 {-@ assume selectUser2 :: forall <r1 :: User -> Bool, q1 :: User -> User -> Bool,
                                   r2 :: User -> Bool, q2 :: User -> User -> Bool, p :: User -> Bool,
                                   r  :: User -> Bool>.
+                         { u_r1::User<r1> , u_r2::User<r2>|-{v:User| v=u_r1 && v=u_r2} <: User<r> }
                          { row :: User<r> |- User<p> <: User<q1 row> }
                          { row :: User<r> |- User<p> <: User<q2 row> }
-                         { User<r> <: User<r1> }
-                         { User<r> <: User<r2> }
                          f: (RefinedFilter<r1, q1> User typ) ->
                          g: (RefinedFilter<r2, q2> User typ2) -> Tagged<p> [User<r>]
 @-}
+
 selectUser2 ::
       RefinedFilter User typ
       -> RefinedFilter User typ2
       -> Tagged [User]
 selectUser2 fs fs' = undefined
+
+{-@
+data FilterList a <p :: User -> Bool> <r :: a -> Bool> where
+  Empty :: FilterList a <{\_ -> True}> <{\_ -> True}>
+  Cons :: forall <r :: a -> Bool, r1 :: a -> Bool, r2 :: a -> Bool, p :: User -> Bool
+                   p2 :: User-> Bool, q1::a->User->Bool>.
+            {a_r1::a<r1>, a_r2 :: a<r2> |- {v:a | v = a_r1 && v = a_r2} <: a<r>}
+            {row :: a<r> |- User<p> <: User<q1 row>}
+            {User<p> <: User<p2>}
+          RefinedFilter a <q1, r1> -> FilterList a <p2, r2> ->
+          FilterList a <p, r>
+@-}
+data FilterList a = Empty | Cons (RefinedFilter a) (FilterList a)
+
 
 {-@ assume projectUser :: forall <r :: User -> Bool, q :: User -> User -> Bool, p :: User -> Bool>.
                          { row :: User<r> |- User<p> <: User<q row> }
@@ -168,7 +186,7 @@ aliceName = ['a', 'l', 'i', 'c', 'e']
 
 {-@ reflect alice @-}
 alice :: User
-alice = User aliceName alice 1
+alice = User 1 aliceName 1 1
 
 {-@ reflect aliceSSN@-}
 aliceSSN :: Int
@@ -176,39 +194,39 @@ aliceSSN = 1
 
 -- | This is fine: policy on friends is self-referential,
 -- so alice can see all users who are friends with her
-{-@ good :: Tagged<{\v -> v == alice}> [{v: User | userFriend v == alice}]
+{-@ good :: Tagged<{\v -> userId v==1}> [{v: User | userFriend v == 1}]
 @-}
 good :: Tagged [User]
-good = selectUser (filterUserFriend alice)
+good = selectUser2 (filterUserFriend 1 ) (filterUserFriend 1)
 
 -- -- | This is fine: policy on friends is self-referential,
 -- -- so alice can see all users who are friends with her
-{-@ goodtest :: a:User->Tagged<{\v -> v == alice}> [{v: User | v==alice}]
+{-@ badtest :: Tagged<{\v ->userId v == aliceSSN}> [{v: User |userSSN v == 1 && userName v == aliceName}]
 @-}
-goodtest :: User -> Tagged [User]
-goodtest a = selectUser2 (filterUserName aliceName) (filterUserSSN aliceSSN )
+badtest :: Tagged [User]
+badtest = selectUser2 (filterUserName aliceName) (filterUserSSN aliceSSN )
 
 -- -- | This is fine: policy on friends is self-referential,
--- -- so alice can see all users who are friends with her
--- {-@ goodshouldbe :: Tagged<{\v -> v == alice}> [{v: User | userName v == aliceName}]
--- @-}
+-- -- -- so alice can see all users who are friends with her
+-- -- {-@ goodshouldbe :: Tagged<{\v -> userId v == 1}> [{v: User | userName v == aliceName}]
+-- -- @-}
 -- goodshouldbe :: Tagged [User]
 -- goodshouldbe = selectUser (filterUserName aliceName)
 
--- {-@ goodshouldbe1 :: Tagged<{\v -> v == alice}> [User]
--- @-}
--- goodshouldbe1 :: Tagged [User]
--- goodshouldbe1 = selectUserOrig (filterUserSSN aliceSSN)
+{-@ goodshouldbe1 :: Tagged<{\v ->userId v == 1}> [{v:User|userSSN v == 1 }]
+@-}
+goodshouldbe1 :: Tagged [User]
+goodshouldbe1 = selectUserOrig (filterUserSSN aliceSSN)
 
 
 -- | This is fine: alice can see both the filtered rows
 -- and the name field in each of these rows
-{-@ names :: Tagged<{\v -> v == alice}> [String]
-@-}
-names :: Tagged [String]
-names = do
-  rows <- selectUser (filterUserFriend alice)
-  projectUser rows UserName
+-- {-@ names :: Tagged<{\v -> v == alice}> [String]
+-- @-}
+-- names :: Tagged [String]
+-- names = do
+--   rows <- selectUser (filterUserFriend 1)
+--   projectUser rows UserName
 
 {-
 -- | This is bad: the result of the query is not public
