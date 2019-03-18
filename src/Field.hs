@@ -2,6 +2,8 @@
 {-@ LIQUID "--no-pattern-inline"                @-}
 module Field where
 
+import qualified Database.Persist
+
 {-@ data Tagged a <p :: User -> Bool> = Tagged { content :: a } @-}
 data Tagged a = Tagged { content :: a }
   deriving Eq
