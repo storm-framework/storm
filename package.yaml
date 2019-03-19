@@ -4,6 +4,8 @@ version: "0.0.0"
 dependencies:
 - base >=4.8.2.0 && <4.9 || >=4.9.1.0 && <5
 - persistent >=2.8 && <2.9
+- persistent-sqlite >=2.8 && <2.9
+- persistent-template >=2.5 && <2.9
 
 library:
   source-dirs: src
