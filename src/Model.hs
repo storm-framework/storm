@@ -11,9 +11,17 @@ module Model
   , Projectable(..)
   ) where
 
-import Database.Persist
+import Database.Persist hiding (entityKey, entityVal)
 import Database.Persist.TH
-import Database.Persist.Sqlite
+import Database.Persist.Sqlite hiding (entityKey, entityVal)
+
+{-@ reflect entityKey @-}
+entityKey :: Entity record -> Key record
+entityKey (Entity k _) = k
+
+{-@ reflect entityVal @-}
+entityVal :: Entity record -> record
+entityVal (Entity _ v) = v
 
 {-@
 data User = User
@@ -24,10 +32,11 @@ data User = User
 @-}
 
 {-@
-data EntityField User field <q :: Entity record -> Entity User -> Bool> where
-  Model.UserName :: EntityField <{\row v -> entityKey v = userFriend (entityVal row)}> User {v:_ | True}
-| Model.UserFriend :: EntityField <{\row v -> entityKey v = userFriend (entityVal row)}> User {v:_ | True}
-| Model.UserSsn :: EntityField <{\row v -> entityKey v = entityKey row}> User {v:_ | True}
+data EntityField User field <q :: Entity User -> Entity User -> Bool> where
+  UserId :: EntityField <{\row v -> True}> User UserId
+| UserName :: EntityField <{\row v -> entityKey v = userFriend (entityVal row)}> User String
+| UserFriend :: EntityField <{\row v -> entityKey v = userFriend (entityVal row)}> User UserId
+| UserSsn :: EntityField <{\row v -> entityKey v = entityKey row}> User Int
 @-}
 {-@ data variance EntityField covariant covariant contravariant @-}
 
