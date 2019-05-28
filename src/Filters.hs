@@ -8,6 +8,7 @@ module Filters
 import qualified Database.Persist
 import Database.Persist ((==.))
 import Model
+import Database.Persist.Sql.Types.Internal
 
 {-@ data Filter record <r :: Entity record -> Bool, q :: Entity record -> User -> Bool> = Filter _ @-}
 {-@ data variance Filter covariant covariant contravariant @-}

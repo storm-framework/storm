@@ -1,5 +1,5 @@
-{-# LANGUAGE GADTs, TypeFamilies, GeneralizedNewtypeDeriving, OverloadedStrings, TemplateHaskell, QuasiQuotes, MultiParamTypeClasses #-}
-
+{-# LANGUAGE GADTs, TypeFamilies, DeriveGeneric, GeneralizedNewtypeDeriving, OverloadedStrings, TemplateHaskell, QuasiQuotes, MultiParamTypeClasses #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-@ LIQUID "--no-adt"                   @-}
 {-@ LIQUID "--exact-data-cons"           @-}
 {-@ LIQUID "--higherorder"              @-}
@@ -14,6 +14,7 @@ module Model
 import Database.Persist hiding (entityKey, entityVal)
 import Database.Persist.TH
 import Database.Persist.Sqlite hiding (entityKey, entityVal)
+import GHC.Generics
 
 {-@ reflect entityKey @-}
 entityKey :: Entity record -> Key record
@@ -55,6 +56,109 @@ User
   ssn Int
   deriving Show
 |]
+-- data User = User
+--     { userName :: !String
+--     , userFriend :: !UserId
+--     , userSsn :: !Int
+--     }
+--   deriving Show
+-- mkPersist sqlSettings [EntityDef 
+--   {entityHaskell = HaskellName {unHaskellName = "User"}, 
+--   entityDB = DBName {unDBName = "user"}, 
+--   entityId = FieldDef {fieldHaskell = HaskellName {unHaskellName = "Id"}, 
+--   fieldDB = DBName {unDBName = "id"}, 
+--   fieldType = FTTypeCon Nothing "UserId", 
+--   fieldSqlType = SqlInt64, 
+--   fieldAttrs = [], 
+--   fieldStrict = True, 
+--   fieldReference = ForeignRef (HaskellName {unHaskellName = "User"}) (FTTypeCon (Just "Data.Int") "Int64"), 
+--   fieldComments = Nothing}, entityAttrs = [], 
+--   entityFields = [FieldDef {fieldHaskell = HaskellName {unHaskellName = "name"}, 
+--   fieldDB = DBName {unDBName = "name"}, fieldType = FTTypeCon Nothing "String", 
+--   fieldSqlType = SqlString, fieldAttrs = [], 
+--   fieldStrict = True, 
+--   fieldReference = NoReference, fieldComments = Nothing
+--   },
+--   FieldDef {fieldHaskell = HaskellName {unHaskellName = "friend"}, 
+--   fieldDB = DBName {unDBName = "friend"}, fieldType = FTTypeCon Nothing "UserId", 
+--   fieldSqlType = SqlInt64, fieldAttrs = [], fieldStrict = True, 
+--   fieldReference = ForeignRef (HaskellName {unHaskellName = "User"}) (FTTypeCon (Just "Data.Int") "Int64"), 
+--   fieldComments = Nothing},FieldDef {fieldHaskell = HaskellName {unHaskellName = "ssn"}, 
+--   fieldDB = DBName {unDBName = "ssn"}, fieldType = FTTypeCon Nothing "Int", 
+--   fieldSqlType = SqlInt64, fieldAttrs = [], fieldStrict = True, fieldReference = NoReference, 
+--   fieldComments = Nothing}], entityUniques = [], entityForeigns = [], entityDerives = ["Show"], 
+--   entityExtra = empty, entitySum = False, entityComments = Nothing
+--   }]
+
+
+-- newtype UserId = UserId {userId :: Key User} 
+
+-- instance ToJSON UserId where
+--   toEncoding = genericToEncoding defaultOptions
+
+-- instance FromJSON UserId
+
+-- instance PersistEntity User where
+--     newtype Key User = UserKey (BackendKey SqlBackend)
+--         deriving (PersistField, Show, Eq, Read, Ord)
+--     data EntityField User typ where
+--         UserId   :: EntityField User UserId
+--         UserName :: EntityField User String
+--         UserFriend  :: EntityField User UserId
+--         UserSsn :: EntityField User Int
+
+--     data Unique User
+--     type PersistEntityBackend User = SqlBackend
+
+--     toPersistFields (User name friend ssn) =
+--         [ SomePersistField name
+--         , SomePersistField friend
+--         , SomePersistField ssn
+--         ]
+
+--     fromPersistValues [nameValue, friendValue, ssnValue] = User
+--         <$> fromPersistValue nameValue
+--         <*> fromPersistValue friendValue
+--         <*> fromPersistValue ssnValue
+--     fromPersistValues _ = Left "Invalid fromPersistValues input"
+
+--     -- Information on each field, used internally to generate SQL statements
+--     persistFieldDef UserId = FieldDef
+--         (HaskellName "Id")
+--         (DBName "id")
+--         (FTTypeCon Nothing "UserId")
+--         SqlInt64
+--         []
+--         True
+--         NoReference
+--         Nothing
+--     persistFieldDef UserName = FieldDef
+--         (HaskellName "name")
+--         (DBName "name")
+--         (FTTypeCon Nothing "String")
+--         SqlString
+--         []
+--         True
+--         NoReference
+--         Nothing
+--     persistFieldDef UserFriend = FieldDef
+--         (HaskellName "friend")
+--         (DBName "friend")
+--         (FTTypeCon Nothing "UserId")
+--         SqlInt64
+--         []
+--         True
+--         NoReference
+--         Nothing
+--     persistFieldDef UserSsn = FieldDef
+--         (HaskellName "ssn")
+--         (DBName "ssn")
+--         (FTTypeCon Nothing "Int")
+--         SqlInt64
+--         []
+--         True
+--         NoReference
+--         Nothing
 
 class PersistEntity a => Projectable a where
   project :: EntityField a field -> Entity a -> field
@@ -64,3 +168,5 @@ instance Projectable User where
   project UserName = userName . entityVal
   project UserFriend = userFriend . entityVal
   project UserSsn = userSsn . entityVal
+
+{-@ assume error :: String -> a @-}

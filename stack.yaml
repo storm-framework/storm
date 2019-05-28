@@ -1,1 +1,9 @@
-resolver: lts-13.14
+resolver: lts-13.20
+
+packages:
+  # - ../persistent/persistent
+  # - ../persistent/persistent-template
+  # - ../persistent/persistent-sqlite
+  # - persistent
+  # - persistent-sqlite
+  # - persistent-template
