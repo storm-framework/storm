@@ -60,7 +60,6 @@ instance PersistEntity User where
     UserFriend :: EntityField User Int
     UserSSN :: EntityField User String
 
-
 {-@ userIdField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == userId (entityVal row)}, {\field row -> field == userId (entityVal row)}> _ _ @-}
 userIdField :: EntityFieldWrapper User Int
 userIdField = EntityFieldWrapper UserId
@@ -107,9 +106,20 @@ forall <policy :: Entity record -> Entity User -> Bool,
 (==.) :: EntityFieldWrapper record typ -> typ -> RefinedFilter record
 field ==. value = undefined
 
-{-@ combinatorExample1 :: RefinedFilter<{\row -> userName (entityVal row) == "alice"}, {\row v -> userId (entityVal v) == userFriend (entityVal row)}> User @-}
-combinatorExample1 :: RefinedFilter User
-combinatorExample1 = userNameField ==. "alice"
+{-@
+(<-.) ::
+forall <policy :: Entity record -> Entity User -> Bool,
+       selector :: Entity record -> typ -> Bool,
+       inverseselector :: typ -> Entity record -> Bool,
+       fieldfilter :: typ -> Bool,
+       filter :: Entity record -> Bool,
+       r :: typ -> Bool>.
+  { row :: (Entity record), value :: typ<r> |- {field:(typ<selector row>) | field == value} <: typ<fieldfilter> }
+  { field :: typ<fieldfilter> |- {v:(Entity <inverseselector field> record) | True} <: {v:(Entity <filter> record) | True} }
+  EntityFieldWrapper<policy, selector, inverseselector> record typ -> [typ<r>] -> RefinedFilter<filter, policy> record
+@-}
+(<-.) :: EntityFieldWrapper record typ -> [typ] -> RefinedFilter record
+field <-. value = undefined
 
 {-@
 data FilterList record <q :: Entity record -> Entity User -> Bool, r :: Entity record -> Bool> where
@@ -184,6 +194,10 @@ instance Monad Tagged where
   @-}
 
 -- * Client code
+
+{-@ combinatorExample1 :: RefinedFilter<{\row -> userName (entityVal row) == "alice"}, {\row v -> userId (entityVal v) == userFriend (entityVal row)}> User @-}
+combinatorExample1 :: RefinedFilter User
+combinatorExample1 = userNameField ==. "alice"
 
 {-@ exampleList1 :: FilterList<{\_ -> True}, {\_ -> True}> User @-}
 exampleList1 :: FilterList User
