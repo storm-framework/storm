@@ -1,6 +1,5 @@
 {-# LANGUAGE GADTs, TypeFamilies #-}
 {-@ LIQUID "--no-pattern-inline"                @-}
-{-@ LIQUID "--reflection" @-}
 module Field where
 
 -- * Models
@@ -10,7 +9,9 @@ class PersistEntity record where
   -- policy :: EntityField record typ -> Entity record -> Entity User -> Bool
   {-@ data variance EntityField covariant covariant contravariant @-}
 
-{-@ data EntityFieldWrapper record typ <policy :: Entity record -> Entity User -> Bool> = EntityFieldWrapper _ @-}
+{-@
+data EntityFieldWrapper record typ <policy :: Entity record -> Entity User -> Bool, selector :: Entity record -> typ -> Bool > = EntityFieldWrapper _
+@-}
 data EntityFieldWrapper record typ = EntityFieldWrapper (EntityField record typ)
 
 {-@
@@ -57,27 +58,20 @@ instance PersistEntity User where
     UserFriend :: EntityField User Int
     UserSSN :: EntityField User String
 
-{-@ inline policy @-}
-policy :: EntityField User typ -> Entity User -> Entity User -> Bool
-policy UserId row viewer = True
-policy UserName row viewer = userId (entityVal viewer) == userFriend (entityVal row)
-policy UserFriend row viewer = userId (entityVal viewer) == userFriend (entityVal row)
-policy UserSSN row viewer = userId (entityVal viewer) == userId (entityVal row)
 
-
-{-@ userIdField :: EntityFieldWrapper <{\row viewer -> True}> _ _ @-}
+{-@ userIdField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == userId (entityVal row)}> _ _ @-}
 userIdField :: EntityFieldWrapper User Int
 userIdField = EntityFieldWrapper UserId
 
-{-@ userNameField :: EntityFieldWrapper <{\row viewer -> userId (entityVal viewer) == userFriend (entityVal row)}> _ _ @-}
+{-@ userNameField :: EntityFieldWrapper <{\row viewer -> userId (entityVal viewer) == userFriend (entityVal row)}, {\row field -> field == userName (entityVal row)}> _ _ @-}
 userNameField :: EntityFieldWrapper User String
 userNameField = EntityFieldWrapper UserName
 
-{-@ userFriendField :: EntityFieldWrapper <{\row viewer -> userId (entityVal viewer) == userFriend (entityVal row)}> _ _ @-}
+{-@ userFriendField :: EntityFieldWrapper <{\row viewer -> userId (entityVal viewer) == userFriend (entityVal row)}, {\row field -> field == userFriend (entityVal row)}> _ _ @-}
 userFriendField :: EntityFieldWrapper User Int
 userFriendField = EntityFieldWrapper UserFriend
 
-{-@ userSSNField :: EntityFieldWrapper <{\row viewer -> userId (entityVal viewer) == userId (entityVal row)}> _ {v:_ | len v == 9} @-}
+{-@ userSSNField :: EntityFieldWrapper <{\row viewer -> userId (entityVal viewer) == userId (entityVal row)}, {\row field -> field == userSSN (entityVal row)}> _ {v:_ | len v == 9} @-}
 userSSNField :: EntityFieldWrapper User String
 userSSNField = EntityFieldWrapper UserSSN
 
@@ -149,24 +143,15 @@ selectList :: FilterList record -> Tagged [Entity record]
 selectList x = undefined
 
 {-@
-projectUser :: forall <r :: Entity User -> Bool, q :: Entity User -> Entity User -> Bool, p :: Entity User -> Bool>.
-  { row :: (Entity <r> User) |- {v:(Entity <p> User) | True} <: {v:(Entity <q row> User) | True}}
-  [(Entity <r> User)] ->
-  EntityFieldWrapper<q> User typ ->
-  Tagged<p> [typ]
+projectUser :: forall <r1 :: Entity User -> Bool, r2 :: typ -> Bool, policy :: Entity User -> Entity User -> Bool, p :: Entity User -> Bool, selector :: Entity User -> typ -> Bool>.
+  { row :: (Entity <r1> User) |- {v:(Entity <p> User) | True} <: {v:(Entity <policy row> User) | True} }
+  { row :: (Entity <r1> User) |- typ<selector row> <: typ<r2> }
+  [(Entity <r1> User)] ->
+  EntityFieldWrapper<policy, selector> User typ ->
+  Tagged<p> [typ<r2>]
 @-}
 projectUser :: [Entity User] -> EntityFieldWrapper User typ -> Tagged [typ]
 projectUser = undefined
-
-{-@
-projectUser' :: forall <r :: Entity User -> Bool, q :: Entity User -> Entity User -> Bool, p :: Entity User -> Bool>.
-  { row :: (Entity <r> User) |- {v:(Entity <p> User) | True} <: {v:(Entity <q row> User) | True}}
-  [(Entity <r> User)] ->
-  EntityFieldWrapper<q> User typ ->
-  Tagged<p> [typ]
-@-}
-projectUser' :: [Entity User] -> EntityFieldWrapper User typ -> Tagged [typ]
-projectUser' = undefined
 
 -- {-@
 -- projectUser' :: forall <r :: Entity User -> Bool, q :: Entity User -> Entity User -> Bool, p :: Entity User -> Bool>.
@@ -177,10 +162,6 @@ projectUser' = undefined
 -- @-}
 -- projectUser' :: [Entity User] -> EntityField User typ -> Tagged [typ]
 -- projectUser' = projectUser
-
-{-@ exampleSSN :: EntityField<{\row v -> True}> User {v:String | len v == 9} @-}
-exampleSSN :: EntityField User String
-exampleSSN = UserSSN
 
 instance Functor Tagged where
   fmap f (Tagged x) = Tagged (f x)
@@ -245,7 +226,7 @@ exampleSelectList2 = selectList (filterUserName "alice" ?: filterUserFriend 1 ?:
 exampleSelectList3 :: Tagged [Entity User]
 exampleSelectList3 = selectList (filterUserName "alice" ?: Empty)
 
-{-@ projectSelect1 :: [{v:_ | userFriend (entityVal v) == 1}] -> Tagged<{\_ -> True}> [{v:_ | len v == 9}] @-}
+{-@ projectSelect1 :: [{v:_ | userFriend (entityVal v) == 1}] -> Tagged<{\_ -> False}> [{v:_ | len v == 9}] @-}
 projectSelect1 :: [Entity User] -> Tagged [String]
 projectSelect1 users = projectUser users userSSNField
 
