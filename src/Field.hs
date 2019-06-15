@@ -10,9 +10,11 @@ class PersistEntity record where
   {-@ data variance EntityField covariant covariant contravariant @-}
 
 {-@
-data EntityFieldWrapper record typ <policy :: Entity record -> Entity User -> Bool, selector :: Entity record -> typ -> Bool > = EntityFieldWrapper _
+data EntityFieldWrapper record typ <policy :: Entity record -> Entity User -> Bool, selector :: Entity record -> typ -> Bool, inverseselector :: typ -> Entity record -> Bool> = EntityFieldWrapper _
 @-}
 data EntityFieldWrapper record typ = EntityFieldWrapper (EntityField record typ)
+{-@ data variance EntityFieldWrapper covariant covariant contravariant invariant invariant @-}
+
 
 {-@
 data Entity record = Entity
@@ -59,19 +61,19 @@ instance PersistEntity User where
     UserSSN :: EntityField User String
 
 
-{-@ userIdField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == userId (entityVal row)}> _ _ @-}
+{-@ userIdField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == userId (entityVal row)}, {\field row -> field == userId (entityVal row)}> _ _ @-}
 userIdField :: EntityFieldWrapper User Int
 userIdField = EntityFieldWrapper UserId
 
-{-@ userNameField :: EntityFieldWrapper <{\row viewer -> userId (entityVal viewer) == userFriend (entityVal row)}, {\row field -> field == userName (entityVal row)}> _ _ @-}
+{-@ userNameField :: EntityFieldWrapper <{\row viewer -> userId (entityVal viewer) == userFriend (entityVal row)}, {\row field -> field == userName (entityVal row)}, {\field row -> field == userName (entityVal row)}> _ _ @-}
 userNameField :: EntityFieldWrapper User String
 userNameField = EntityFieldWrapper UserName
 
-{-@ userFriendField :: EntityFieldWrapper <{\row viewer -> userId (entityVal viewer) == userFriend (entityVal row)}, {\row field -> field == userFriend (entityVal row)}> _ _ @-}
+{-@ userFriendField :: EntityFieldWrapper <{\row viewer -> userId (entityVal viewer) == userFriend (entityVal row)}, {\row field -> field == userFriend (entityVal row)}, {\field row -> field == userFriend (entityVal row)}> _ _ @-}
 userFriendField :: EntityFieldWrapper User Int
 userFriendField = EntityFieldWrapper UserFriend
 
-{-@ userSSNField :: EntityFieldWrapper <{\row viewer -> userId (entityVal viewer) == userId (entityVal row)}, {\row field -> field == userSSN (entityVal row)}> _ {v:_ | len v == 9} @-}
+{-@ userSSNField :: EntityFieldWrapper <{\row viewer -> userId (entityVal viewer) == userId (entityVal row)}, {\row field -> field == userSSN (entityVal row)}, {\field row -> field == userSSN (entityVal row)}> _ {v:_ | len v == 9} @-}
 userSSNField :: EntityFieldWrapper User String
 userSSNField = EntityFieldWrapper UserSSN
 
@@ -90,22 +92,24 @@ data RefinedFilter record = RefinedFilter (Filter record)
 
 {-@ data variance RefinedFilter covariant covariant contravariant @-}
 
-{-@ filterUserName ::
-       val: String -> RefinedFilter<{\row -> userName (entityVal row) == val}, {\row v -> userId (entityVal v) = userFriend (entityVal row)}> User @-}
-filterUserName :: String -> RefinedFilter User
-filterUserName val = RefinedFilter Filter
+{-@
+(==.) ::
+forall <policy :: Entity record -> Entity User -> Bool,
+       selector :: Entity record -> typ -> Bool,
+       inverseselector :: typ -> Entity record -> Bool,
+       fieldfilter :: typ -> Bool,
+       filter :: Entity record -> Bool,
+       r :: typ -> Bool>.
+  { row :: (Entity record), value :: typ<r> |- {field:(typ<selector row>) | field == value} <: typ<fieldfilter> }
+  { field :: typ<fieldfilter> |- {v:(Entity <inverseselector field> record) | True} <: {v:(Entity <filter> record) | True} }
+  EntityFieldWrapper<policy, selector, inverseselector> record typ -> typ<r> -> RefinedFilter<filter, policy> record
+@-}
+(==.) :: EntityFieldWrapper record typ -> typ -> RefinedFilter record
+field ==. value = undefined
 
-
-{-@ filterUserSSN ::
-       val: {v:_ | len v == 9} -> RefinedFilter<{\row -> userSSN (entityVal row) == val}, {\row v -> userId (entityVal v) = userId (entityVal row)}> User @-}
-filterUserSSN :: String -> RefinedFilter User
-filterUserSSN val = RefinedFilter Filter
-
-
-{-@ filterUserFriend ::
-       val: Int -> RefinedFilter<{\row -> userFriend (entityVal row) == val}, {\row v -> userId (entityVal v) = userFriend (entityVal row)}> User @-}
-filterUserFriend :: Int -> RefinedFilter User
-filterUserFriend val = RefinedFilter Filter
+{-@ combinatorExample1 :: RefinedFilter<{\row -> userName (entityVal row) == "alice"}, {\row v -> userId (entityVal v) == userFriend (entityVal row)}> User @-}
+combinatorExample1 :: RefinedFilter User
+combinatorExample1 = userNameField ==. "alice"
 
 {-@
 data FilterList record <q :: Entity record -> Entity User -> Bool, r :: Entity record -> Bool> where
@@ -143,25 +147,15 @@ selectList :: FilterList record -> Tagged [Entity record]
 selectList x = undefined
 
 {-@
-projectUser :: forall <r1 :: Entity User -> Bool, r2 :: typ -> Bool, policy :: Entity User -> Entity User -> Bool, p :: Entity User -> Bool, selector :: Entity User -> typ -> Bool>.
-  { row :: (Entity <r1> User) |- {v:(Entity <p> User) | True} <: {v:(Entity <policy row> User) | True} }
-  { row :: (Entity <r1> User) |- typ<selector row> <: typ<r2> }
-  [(Entity <r1> User)] ->
-  EntityFieldWrapper<policy, selector> User typ ->
+project :: forall <r1 :: Entity record -> Bool, r2 :: typ -> Bool, policy :: Entity record -> Entity User -> Bool, p :: Entity User -> Bool, selector :: Entity record -> typ -> Bool>.
+  { row :: (Entity <r1> record) |- {v:(Entity <p> User) | True} <: {v:(Entity <policy row> User) | True} }
+  { row :: (Entity <r1> record) |- typ<selector row> <: typ<r2> }
+  [(Entity <r1> record)] ->
+  EntityFieldWrapper<policy, selector> record typ ->
   Tagged<p> [typ<r2>]
 @-}
-projectUser :: [Entity User] -> EntityFieldWrapper User typ -> Tagged [typ]
-projectUser = undefined
-
--- {-@
--- projectUser' :: forall <r :: Entity User -> Bool, q :: Entity User -> Entity User -> Bool, p :: Entity User -> Bool>.
---   { row :: (Entity <r> User) |- {v:(Entity <p> User) | True} <: {v:(Entity User) | userId (entityVal v) == userId (entityVal row)}}
---   [(Entity <r> User)] ->
---   EntityField<{\row viewer -> userId (entityVal viewer) == userId (entityVal row)}> User typ ->
---   Tagged<p> [typ]
--- @-}
--- projectUser' :: [Entity User] -> EntityField User typ -> Tagged [typ]
--- projectUser' = projectUser
+project :: [Entity record] -> EntityFieldWrapper record typ -> Tagged [typ]
+project = undefined
 
 instance Functor Tagged where
   fmap f (Tagged x) = Tagged (f x)
@@ -197,38 +191,38 @@ exampleList1 = Empty
 
 {-@ exampleList2 :: FilterList<{\_ v -> userId (entityVal v) == 1}, {\user -> userFriend (entityVal user) == 1}> User @-}
 exampleList2 :: FilterList User
-exampleList2 = filterUserFriend 1 ?: Empty
+exampleList2 = (userFriendField ==. 1) ?: Empty
 
 {-@ exampleList3 :: FilterList<{\_ v -> userId (entityVal v) == 1}, {\user -> userFriend (entityVal user) == 1 && userName (entityVal user) == "alice"}> User @-}
 exampleList3 :: FilterList User
-exampleList3 = filterUserName "alice" ?: filterUserFriend 1 ?: Empty
+exampleList3 = userNameField ==. "alice" ?: userFriendField ==. 1 ?: Empty
 
 {-@ exampleList4 :: FilterList<{\_ v -> userId (entityVal v) == 1}, {\user -> userFriend (entityVal user) == 1 && userName (entityVal user) == "alice"}> User @-}
 exampleList4 :: FilterList User
-exampleList4 = filterUserFriend 1 ?: filterUserName "alice" ?: Empty
+exampleList4 = userFriendField ==. 1 ?: userNameField ==. "alice" ?: Empty
 
 {-@ exampleList5 :: FilterList<{\row v -> userId (entityVal v) == userFriend (entityVal row)}, {\user -> userName (entityVal user) == "alice"}> User @-}
 exampleList5 :: FilterList User
-exampleList5 = filterUserName "alice" ?: Empty
+exampleList5 = userNameField ==. "alice" ?: Empty
 
 {-@ exampleSelectList1 :: Tagged<{\v -> userId (entityVal v) == 1}> [{v : Entity User | userFriend (entityVal v) == 1}] @-}
 exampleSelectList1 :: Tagged [Entity User]
 exampleSelectList1 = selectList filters
   where
     {-@ filters :: FilterList<{\_ v -> userId (entityVal v) == 1}, {\v -> userFriend (entityVal v) == 1}> User @-}
-    filters = filterUserFriend 1 ?: Empty
+    filters = userFriendField ==. 1 ?: Empty
 
 {-@ exampleSelectList2 :: Tagged<{\v -> userId (entityVal v) == 1}> [{v : _ | userFriend (entityVal v) == 1 && userName (entityVal v) == "alice"}] @-}
 exampleSelectList2 :: Tagged [Entity User]
-exampleSelectList2 = selectList (filterUserName "alice" ?: filterUserFriend 1 ?: Empty)
+exampleSelectList2 = selectList (userNameField ==. "alice" ?: userFriendField ==. 1 ?: Empty)
 
 {-@ exampleSelectList3 :: Tagged<{\v -> False}> [{v : _ | userName (entityVal v) == "alice"}] @-}
 exampleSelectList3 :: Tagged [Entity User]
-exampleSelectList3 = selectList (filterUserName "alice" ?: Empty)
+exampleSelectList3 = selectList (userNameField ==. "alice" ?: Empty)
 
 {-@ projectSelect1 :: [{v:_ | userFriend (entityVal v) == 1}] -> Tagged<{\_ -> False}> [{v:_ | len v == 9}] @-}
 projectSelect1 :: [Entity User] -> Tagged [String]
-projectSelect1 users = projectUser users userSSNField
+projectSelect1 users = project users userSSNField
 
 -- | This is fine: user 1 can see both the filtered rows and the name field in
 --   each of these rows
@@ -236,25 +230,25 @@ projectSelect1 users = projectUser users userSSNField
 @-}
 names :: Tagged [String]
 names = do
-  rows <- selectList (filterUserFriend 1 ?: Empty)
-  projectUser rows userNameField
+  rows <- selectList (userFriendField ==. 1 ?: Empty)
+  project rows userNameField
 
 -- | This is bad: the result of the query is not public
 {-@ bad1 :: Tagged<{\v -> True}> [{v: _ | userFriend (entityVal v) == 1}]
 @-}
 bad1 :: Tagged [Entity User]
-bad1 = selectList (filterUserFriend 1 ?: Empty)
+bad1 = selectList (userFriendField ==. 1 ?: Empty)
 
 -- | This is bad: who knows who else has name "alice" and is not friends with user 1?
 {-@ bad2 :: Tagged<{\v -> userId (entityVal v) == 1}> [{v: _ | userName (entityVal v) == "alice"}]
 @-}
 bad2 :: Tagged [Entity User]
-bad2 = selectList (filterUserName "alice" ?: Empty)
+bad2 = selectList (userNameField ==. "alice" ?: Empty)
 
 -- | This is bad: user 1 can see the filtered rows but not their SSNs
 {-@ badSSNs :: Tagged<{\v -> userId (entityVal v) == 1}> [{v:_ | len v == 9}]
 @-}
 badSSNs :: Tagged [String]
 badSSNs = do
-  rows <- selectList (filterUserFriend 1 ?: Empty)
-  projectUser rows userSSNField
+  rows <- selectList (userFriendField ==. 1 ?: Empty)
+  project rows userSSNField
