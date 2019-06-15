@@ -1,69 +1,124 @@
-{-# LANGUAGE GADTs #-}
+{-# LANGUAGE GADTs, TypeFamilies #-}
 {-@ LIQUID "--no-pattern-inline"                @-}
+{-@ LIQUID "--reflection" @-}
 module Field where
 
-import qualified Database.Persist
+-- * Models
+class PersistEntity record where
+  data Key record
+  data EntityField record :: * -> *
+  -- policy :: EntityField record typ -> Entity record -> Entity User -> Bool
+  {-@ data variance EntityField covariant covariant contravariant @-}
 
-{-@ data Tagged a <p :: User -> Bool> = Tagged { content :: a } @-}
+{-@ data EntityFieldWrapper record typ <policy :: Entity record -> Entity User -> Bool> = EntityFieldWrapper _ @-}
+data EntityFieldWrapper record typ = EntityFieldWrapper (EntityField record typ)
+
+{-@
+data Entity record = Entity
+  { entityKey :: _
+  , entityVal :: _
+  }
+@-}
+data Entity record = Entity
+  { entityKey :: Key record
+  , entityVal :: record
+  }
+
+-- ** User
+{-@
+data User = User
+  { userId :: _
+  , userName :: _
+  , userFriend :: _
+  , userSSN :: {v:_ | len v == 9}
+  }
+@-}
+data User = User
+  { userId :: Int
+  , userName :: String
+  , userFriend :: Int
+  , userSSN :: String
+  } deriving (Eq, Show)
+
+instance PersistEntity User where
+  data Key User = UserKey Int
+    deriving (Eq, Show)
+
+  {-@
+  data EntityField User typ <policy :: Entity User -> Entity User -> Bool> where
+    UserId :: EntityField <{\row viewer -> True}> _ _
+  | UserName :: EntityField <{\row viewer -> userId (entityVal viewer) == userFriend (entityVal row)}> _ _
+  | UserFriend :: EntityField <{\row viewer -> userId (entityVal viewer) == userFriend (entityVal row)}> _ _
+  | UserSSN :: EntityField <{\row viewer -> userId (entityVal viewer) == userId (entityVal row)}> _ {v:_ | len v == 9}
+  @-}
+  data EntityField User typ where
+    UserId :: EntityField User Int
+    UserName :: EntityField User String
+    UserFriend :: EntityField User Int
+    UserSSN :: EntityField User String
+
+{-@ inline policy @-}
+policy :: EntityField User typ -> Entity User -> Entity User -> Bool
+policy UserId row viewer = True
+policy UserName row viewer = userId (entityVal viewer) == userFriend (entityVal row)
+policy UserFriend row viewer = userId (entityVal viewer) == userFriend (entityVal row)
+policy UserSSN row viewer = userId (entityVal viewer) == userId (entityVal row)
+
+
+{-@ userIdField :: EntityFieldWrapper <{\row viewer -> True}> _ _ @-}
+userIdField :: EntityFieldWrapper User Int
+userIdField = EntityFieldWrapper UserId
+
+{-@ userNameField :: EntityFieldWrapper <{\row viewer -> userId (entityVal viewer) == userFriend (entityVal row)}> _ _ @-}
+userNameField :: EntityFieldWrapper User String
+userNameField = EntityFieldWrapper UserName
+
+{-@ userFriendField :: EntityFieldWrapper <{\row viewer -> userId (entityVal viewer) == userFriend (entityVal row)}> _ _ @-}
+userFriendField :: EntityFieldWrapper User Int
+userFriendField = EntityFieldWrapper UserFriend
+
+{-@ userSSNField :: EntityFieldWrapper <{\row viewer -> userId (entityVal viewer) == userId (entityVal row)}> _ {v:_ | len v == 9} @-}
+userSSNField :: EntityFieldWrapper User String
+userSSNField = EntityFieldWrapper UserSSN
+
+-- * Infrastructure
+
+{-@ data Tagged a <label :: Entity User -> Bool> = Tagged { content :: a } @-}
 data Tagged a = Tagged { content :: a }
-  deriving Eq
 
 {-@ data variance Tagged covariant contravariant @-}
 
 -- Placeholder for Data.Persistent's Filter type
 data Filter a = Filter
 
-{-@ data RefinedFilter record <r :: record -> Bool, q :: record -> User -> Bool> = RefinedFilter (Filter record) @-}
+{-@ data RefinedFilter record <r :: Entity record -> Bool, q :: Entity record -> Entity User -> Bool> = RefinedFilter (Filter record) @-}
 data RefinedFilter record = RefinedFilter (Filter record)
 
 {-@ data variance RefinedFilter covariant covariant contravariant @-}
 
-{-@
-data User = User
-     { userId   :: Int,
-       userName :: String
-     , userFriend :: Int
-     , userSSN    :: Int
-     }
-@-}
-data User = User { userId::Int, userName :: String, userFriend :: Int, userSSN :: Int }
-    deriving (Eq, Show)
-
-{-@
-data EntityField record typ <q :: record -> User -> Bool> where 
-   Field.UserName :: EntityField <{\row v -> userId v = userFriend row}> User {v:_ | True}
- | Field.UserFriend :: EntityField <{\row v -> userId v = userFriend row}> User {v:_ | True}
- | Field.UserSSN :: EntityField <{\row v -> userId v = userId row}> User {v:_ | True}
-@-}
-{-@ data variance EntityField covariant covariant contravariant @-}
-data EntityField a b where
-  UserName :: EntityField User String
-  UserFriend :: EntityField User Int
-  UserSSN :: EntityField User Int
-
 {-@ filterUserName ::
-       val: String -> RefinedFilter<{\row -> userName row == val}, {\row v -> userId v = userFriend row}> User @-}
+       val: String -> RefinedFilter<{\row -> userName (entityVal row) == val}, {\row v -> userId (entityVal v) = userFriend (entityVal row)}> User @-}
 filterUserName :: String -> RefinedFilter User
 filterUserName val = RefinedFilter Filter
 
 
 {-@ filterUserSSN ::
-       val: Int -> RefinedFilter<{\row -> userSSN row == val}, {\row v -> userId v = userId row}> User @-}
-filterUserSSN :: Int -> RefinedFilter User
+       val: {v:_ | len v == 9} -> RefinedFilter<{\row -> userSSN (entityVal row) == val}, {\row v -> userId (entityVal v) = userId (entityVal row)}> User @-}
+filterUserSSN :: String -> RefinedFilter User
 filterUserSSN val = RefinedFilter Filter
 
 
 {-@ filterUserFriend ::
-       val: Int -> RefinedFilter<{\row ->userFriend row == val}, {\row v -> userId v = userFriend row}> User @-}
+       val: Int -> RefinedFilter<{\row -> userFriend (entityVal row) == val}, {\row v -> userId (entityVal v) = userFriend (entityVal row)}> User @-}
 filterUserFriend :: Int -> RefinedFilter User
 filterUserFriend val = RefinedFilter Filter
 
 {-@
-data FilterList a <q :: a -> User -> Bool, r :: a -> Bool> where
-    Empty :: FilterList<{\_ _ -> True}, {\_ -> True}> a
-  | Cons :: RefinedFilter<{\_ -> True}, {\_ _ -> False}> a ->
-            FilterList<{\_ _ -> False}, {\_ -> True}> a ->
-            FilterList<q, r> a
+data FilterList record <q :: Entity record -> Entity User -> Bool, r :: Entity record -> Bool> where
+    Empty :: FilterList<{\_ _ -> True}, {\_ -> True}> record
+  | Cons :: RefinedFilter<{\_ -> True}, {\_ _ -> False}> record ->
+            FilterList<{\_ _ -> False}, {\_ -> True}> record ->
+            FilterList<q, r> record
 @-}
 {-@ data variance FilterList covariant contravariant covariant @-}
 data FilterList a = Empty | Cons (RefinedFilter a) (FilterList a)
@@ -73,42 +128,65 @@ data FilterList a = Empty | Cons (RefinedFilter a) (FilterList a)
 
 infixr 5 ?:
 {-@
-(?:) :: forall <r :: a -> Bool, r1 :: a -> Bool, r2 :: a -> Bool,
-                q :: a -> User -> Bool, q1 :: a -> User -> Bool, q2 :: a -> User -> Bool>.
-  {a_r1 :: a<r1>, a_r2 :: a<r2> |- {v:a | v == a_r1 && v == a_r2} <: a<r>}
-  {row :: a<r> |- User<q row> <: User<q1 row>}
-  {row :: a<r> |- User<q row> <: User<q2 row>}
-  RefinedFilter<r1, q1> a ->
-  FilterList<q2, r2> a ->
-  FilterList<q, r> a
+(?:) :: forall <r :: Entity record -> Bool, r1 :: Entity record -> Bool, r2 :: Entity record -> Bool,
+                q :: Entity record -> Entity User -> Bool, q1 :: Entity record -> Entity User -> Bool, q2 :: Entity record -> Entity User -> Bool>.
+  {row1 :: (Entity <r1> record), row2 :: (Entity <r2> record) |- {v:Entity record | v == row1 && v == row2} <: {v:(Entity <r> record) | True}}
+  {row :: (Entity <r> record) |- {v:(Entity <q row> User) | True} <: {v:(Entity <q1 row> User) | True}}
+  {row :: (Entity <r> record) |- {v:(Entity <q row> User) | True} <: {v:(Entity <q2 row> User) | True}}
+  RefinedFilter<r1, q1> record ->
+  FilterList<q2, r2> record ->
+  FilterList<q, r> record
 @-}
-(?:) :: RefinedFilter a -> FilterList a -> FilterList a
+(?:) :: RefinedFilter record -> FilterList record -> FilterList record
 f ?: fs = f `Cons` fs
 
 {-@
-selectList :: forall <q :: a -> User -> Bool, r :: a -> Bool, p :: User -> Bool>.
-  {row :: a<r> |- User<p> <: User<q row>}
-  FilterList<q, r> a -> Tagged<p> [a<r>]
+selectList :: forall <q :: Entity record -> Entity User -> Bool, r :: Entity record -> Bool, p :: Entity User -> Bool>.
+  {row :: (Entity <r> record) |- {v:(Entity <p> User) | True} <: {v:(Entity <q row> User) | True}}
+  FilterList<q, r> record -> Tagged<p> [(Entity <r> record)]
 @-}
-selectList :: FilterList a -> Tagged [a]
-selectList = undefined
+selectList :: FilterList record -> Tagged [Entity record]
+selectList x = undefined
 
-{-@ assume projectUser :: forall <r :: User -> Bool, q :: User -> User -> Bool, p :: User -> Bool>.
-                         { row :: User<r> |- User<p> <: User<q row> }
-                         [User<r>] -> f: EntityField<q> User typ
-                         -> Tagged<p> [typ]
+{-@
+projectUser :: forall <r :: Entity User -> Bool, q :: Entity User -> Entity User -> Bool, p :: Entity User -> Bool>.
+  { row :: (Entity <r> User) |- {v:(Entity <p> User) | True} <: {v:(Entity <q row> User) | True}}
+  [(Entity <r> User)] ->
+  EntityFieldWrapper<q> User typ ->
+  Tagged<p> [typ]
 @-}
-projectUser ::
-      [User]
-      -> EntityField User typ
-      -> Tagged [typ]
+projectUser :: [Entity User] -> EntityFieldWrapper User typ -> Tagged [typ]
 projectUser = undefined
+
+{-@
+projectUser' :: forall <r :: Entity User -> Bool, q :: Entity User -> Entity User -> Bool, p :: Entity User -> Bool>.
+  { row :: (Entity <r> User) |- {v:(Entity <p> User) | True} <: {v:(Entity <q row> User) | True}}
+  [(Entity <r> User)] ->
+  EntityFieldWrapper<q> User typ ->
+  Tagged<p> [typ]
+@-}
+projectUser' :: [Entity User] -> EntityFieldWrapper User typ -> Tagged [typ]
+projectUser' = undefined
+
+-- {-@
+-- projectUser' :: forall <r :: Entity User -> Bool, q :: Entity User -> Entity User -> Bool, p :: Entity User -> Bool>.
+--   { row :: (Entity <r> User) |- {v:(Entity <p> User) | True} <: {v:(Entity User) | userId (entityVal v) == userId (entityVal row)}}
+--   [(Entity <r> User)] ->
+--   EntityField<{\row viewer -> userId (entityVal viewer) == userId (entityVal row)}> User typ ->
+--   Tagged<p> [typ]
+-- @-}
+-- projectUser' :: [Entity User] -> EntityField User typ -> Tagged [typ]
+-- projectUser' = projectUser
+
+{-@ exampleSSN :: EntityField<{\row v -> True}> User {v:String | len v == 9} @-}
+exampleSSN :: EntityField User String
+exampleSSN = UserSSN
 
 instance Functor Tagged where
   fmap f (Tagged x) = Tagged (f x)
 
 instance Applicative Tagged where
-  pure  = Tagged
+  pure = Tagged
   -- f (a -> b) -> f a -> f b
   (Tagged f) <*> (Tagged x) = Tagged (f x)
 
@@ -119,76 +197,83 @@ instance Monad Tagged where
   fail          = error
 
 {-@ instance Monad Tagged where
-     >>= :: forall <p :: User -> Bool, f:: a -> b -> Bool>.
+     >>= :: forall <p :: Entity User -> Bool, f:: a -> b -> Bool>.
             x:Tagged <p> a
          -> (u:a -> Tagged <p> (b <f u>))
          -> Tagged <p> (b<f (content x)>);
-     >>  :: forall <p :: User -> Bool>.
+     >>  :: forall <p :: Entity User -> Bool>.
             x:Tagged<{\v -> false}> a
          -> Tagged<p> b
          -> Tagged<p> b;
      return :: a -> Tagged <{\v -> true}> a
   @-}
 
-{- Client code -}
+-- * Client code
 
 {-@ exampleList1 :: FilterList<{\_ -> True}, {\_ -> True}> User @-}
 exampleList1 :: FilterList User
 exampleList1 = Empty
 
-{-@ exampleList2 :: FilterList<{\_ v -> userId v == 1}, {\user -> userFriend user == 1}> User @-}
+{-@ exampleList2 :: FilterList<{\_ v -> userId (entityVal v) == 1}, {\user -> userFriend (entityVal user) == 1}> User @-}
 exampleList2 :: FilterList User
 exampleList2 = filterUserFriend 1 ?: Empty
 
-{-@ exampleList3 :: FilterList<{\_ v -> userId v == 1}, {\user -> userFriend user == 1 && userName user == "alice"}> User @-}
+{-@ exampleList3 :: FilterList<{\_ v -> userId (entityVal v) == 1}, {\user -> userFriend (entityVal user) == 1 && userName (entityVal user) == "alice"}> User @-}
 exampleList3 :: FilterList User
 exampleList3 = filterUserName "alice" ?: filterUserFriend 1 ?: Empty
 
-{-@ exampleList4 :: FilterList<{\_ v -> userId v == 1}, {\user -> userFriend user == 1 && userName user == "alice"}> User @-}
+{-@ exampleList4 :: FilterList<{\_ v -> userId (entityVal v) == 1}, {\user -> userFriend (entityVal user) == 1 && userName (entityVal user) == "alice"}> User @-}
 exampleList4 :: FilterList User
 exampleList4 = filterUserFriend 1 ?: filterUserName "alice" ?: Empty
 
-{-@ exampleList5 :: FilterList<{\row v -> userId v == userFriend row}, {\user -> userName user == "alice"}> User @-}
+{-@ exampleList5 :: FilterList<{\row v -> userId (entityVal v) == userFriend (entityVal row)}, {\user -> userName (entityVal user) == "alice"}> User @-}
 exampleList5 :: FilterList User
 exampleList5 = filterUserName "alice" ?: Empty
 
-{-@ exampleSelectList1 :: Tagged<{\v -> userId v == 1}> [{v : User | userFriend v == 1}] @-}
-exampleSelectList1 :: Tagged [User]
-exampleSelectList1 = selectList (filterUserFriend 1 ?: Empty)
+{-@ exampleSelectList1 :: Tagged<{\v -> userId (entityVal v) == 1}> [{v : Entity User | userFriend (entityVal v) == 1}] @-}
+exampleSelectList1 :: Tagged [Entity User]
+exampleSelectList1 = selectList filters
+  where
+    {-@ filters :: FilterList<{\_ v -> userId (entityVal v) == 1}, {\v -> userFriend (entityVal v) == 1}> User @-}
+    filters = filterUserFriend 1 ?: Empty
 
-{-@ exampleSelectList2 :: Tagged<{\v -> userId v == 1}> [{v : User | userFriend v == 1 && userName v == "alice"}] @-}
-exampleSelectList2 :: Tagged [User]
+{-@ exampleSelectList2 :: Tagged<{\v -> userId (entityVal v) == 1}> [{v : _ | userFriend (entityVal v) == 1 && userName (entityVal v) == "alice"}] @-}
+exampleSelectList2 :: Tagged [Entity User]
 exampleSelectList2 = selectList (filterUserName "alice" ?: filterUserFriend 1 ?: Empty)
 
-{-@ exampleSelectList3 :: Tagged<{\v -> False}> [{v : User | userName v == "alice"}] @-}
-exampleSelectList3 :: Tagged [User]
+{-@ exampleSelectList3 :: Tagged<{\v -> False}> [{v : _ | userName (entityVal v) == "alice"}] @-}
+exampleSelectList3 :: Tagged [Entity User]
 exampleSelectList3 = selectList (filterUserName "alice" ?: Empty)
+
+{-@ projectSelect1 :: [{v:_ | userFriend (entityVal v) == 1}] -> Tagged<{\_ -> True}> [{v:_ | len v == 9}] @-}
+projectSelect1 :: [Entity User] -> Tagged [String]
+projectSelect1 users = projectUser users userSSNField
 
 -- | This is fine: user 1 can see both the filtered rows and the name field in
 --   each of these rows
-{-@ names :: Tagged<{\v -> userId v == 1}> [String]
+{-@ names :: Tagged<{\v -> userId (entityVal v) == 1}> [String]
 @-}
 names :: Tagged [String]
 names = do
   rows <- selectList (filterUserFriend 1 ?: Empty)
-  projectUser rows UserName
+  projectUser rows userNameField
 
 -- | This is bad: the result of the query is not public
-{-@ bad1 :: Tagged<{\v -> true}> [{v: User | userFriend v == 1}]
+{-@ bad1 :: Tagged<{\v -> True}> [{v: _ | userFriend (entityVal v) == 1}]
 @-}
-bad1 :: Tagged [User]
+bad1 :: Tagged [Entity User]
 bad1 = selectList (filterUserFriend 1 ?: Empty)
 
 -- | This is bad: who knows who else has name "alice" and is not friends with user 1?
-{-@ bad2 :: Tagged<{\v -> userId v == 1}> [{v: User | userName v == "alice"}]
+{-@ bad2 :: Tagged<{\v -> userId (entityVal v) == 1}> [{v: _ | userName (entityVal v) == "alice"}]
 @-}
-bad2 :: Tagged [User]
+bad2 :: Tagged [Entity User]
 bad2 = selectList (filterUserName "alice" ?: Empty)
 
 -- | This is bad: user 1 can see the filtered rows but not their SSNs
-{-@ badSSNs :: Tagged<{\v -> userId v == 1}> [Int]
+{-@ badSSNs :: Tagged<{\v -> userId (entityVal v) == 1}> [{v:_ | len v == 9}]
 @-}
-badSSNs :: Tagged [Int]
+badSSNs :: Tagged [String]
 badSSNs = do
   rows <- selectList (filterUserFriend 1 ?: Empty)
-  projectUser rows UserSSN
+  projectUser rows userSSNField
