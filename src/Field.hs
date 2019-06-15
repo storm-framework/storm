@@ -1,13 +1,11 @@
 {-# LANGUAGE GADTs, TypeFamilies #-}
-{-@ LIQUID "--no-pattern-inline"                @-}
+{-@ LIQUID "--no-pattern-inline" @-}
 module Field where
 
 -- * Models
 class PersistEntity record where
   data Key record
   data EntityField record :: * -> *
-  -- policy :: EntityField record typ -> Entity record -> Entity User -> Bool
-  {-@ data variance EntityField covariant covariant contravariant @-}
 
 {-@
 data EntityFieldWrapper record typ <policy :: Entity record -> Entity User -> Bool, selector :: Entity record -> typ -> Bool, inverseselector :: typ -> Entity record -> Bool> = EntityFieldWrapper _
@@ -45,13 +43,6 @@ instance PersistEntity User where
   data Key User = UserKey Int
     deriving (Eq, Show)
 
-  {-@
-  data EntityField User typ <policy :: Entity User -> Entity User -> Bool> where
-    UserId :: EntityField <{\row viewer -> True}> _ _
-  | UserName :: EntityField <{\row viewer -> entityKey viewer == userFriend (entityVal row)}> _ _
-  | UserFriend :: EntityField <{\row viewer -> entityKey viewer == userFriend (entityVal row)}> _ _
-  | UserSSN :: EntityField <{\row viewer -> entityKey viewer == entityKey row}> _ {v:_ | len v == 9}
-  @-}
   data EntityField User typ where
     UserId :: EntityField User (Key User)
     UserName :: EntityField User String
@@ -70,9 +61,75 @@ userNameField = EntityFieldWrapper UserName
 userFriendField :: EntityFieldWrapper User (Key User)
 userFriendField = EntityFieldWrapper UserFriend
 
-{-@ userSSNField :: EntityFieldWrapper <{\row viewer -> entityKey viewer == entityKey row}, {\row field -> field == userSSN (entityVal row)}, {\field row -> field == userSSN (entityVal row)}> _ {v:_ | len v == 9} @-}
+{-@ assume userSSNField :: EntityFieldWrapper <{\row viewer -> entityKey viewer == entityKey row}, {\row field -> field == userSSN (entityVal row)}, {\field row -> field == userSSN (entityVal row)}> _ {v:_ | len v == 9} @-}
 userSSNField :: EntityFieldWrapper User String
 userSSNField = EntityFieldWrapper UserSSN
+
+-- ** TodoItem
+{-@
+data TodoItem = TodoItem
+  { todoItemOwner :: Key User
+  , todoItemTask :: {v:_ | len v > 0}
+  }
+@-}
+data TodoItem = TodoItem
+  { todoItemOwner :: Key User
+  , todoItemTask :: String
+  } deriving (Eq, Show)
+
+instance PersistEntity TodoItem where
+  data Key TodoItem = TodoItemKey Int
+    deriving (Eq, Show)
+
+  data EntityField TodoItem typ where
+    TodoItemId :: EntityField TodoItem (Key TodoItem)
+    TodoItemOwner :: EntityField TodoItem (Key User)
+    TodoItemTask :: EntityField TodoItem String
+
+{-@ todoItemIdField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == entityKey row}, {\field row -> field == entityKey row}> _ _ @-}
+todoItemIdField :: EntityFieldWrapper TodoItem (Key TodoItem)
+todoItemIdField = EntityFieldWrapper TodoItemId
+
+{-@ todoItemOwnerField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == todoItemOwner (entityVal row)}, {\field row -> field == todoItemOwner (entityVal row)}> _ _ @-}
+todoItemOwnerField :: EntityFieldWrapper TodoItem (Key User)
+todoItemOwnerField = EntityFieldWrapper TodoItemOwner
+
+{-@ assume todoItemTaskField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == todoItemTask (entityVal row)}, {\field row -> field == todoItemTask (entityVal row)}> _ {v:_ | len v > 0} @-}
+todoItemTaskField :: EntityFieldWrapper TodoItem String
+todoItemTaskField = EntityFieldWrapper TodoItemTask
+
+-- ** Share
+{-@
+data Share = Share
+  { shareFrom :: Key User
+  , shareTo :: Key User
+  }
+@-}
+data Share = Share
+  { shareFrom :: Key User
+  , shareTo :: Key User
+  } deriving (Eq, Show)
+
+instance PersistEntity Share where
+  data Key Share = ShareKey Int
+    deriving (Eq, Show)
+
+  data EntityField Share typ where
+    ShareId :: EntityField Share (Key Share)
+    ShareFrom :: EntityField Share (Key User)
+    ShareTo :: EntityField Share (Key User)
+
+{-@ shareIdField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == entityKey row}, {\field row -> field == entityKey row}> _ _ @-}
+shareIdField :: EntityFieldWrapper Share (Key Share)
+shareIdField = EntityFieldWrapper ShareId
+
+{-@ shareFromField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == shareFrom (entityVal row)}, {\field row -> field == shareFrom (entityVal row)}> _ _ @-}
+shareFromField :: EntityFieldWrapper Share (Key User)
+shareFromField = EntityFieldWrapper ShareFrom
+
+{-@ shareToField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == shareTo (entityVal row)}, {\field row -> field == shareTo (entityVal row)}> _ _ @-}
+shareToField :: EntityFieldWrapper Share (Key User)
+shareToField = EntityFieldWrapper ShareTo
 
 -- * Infrastructure
 
