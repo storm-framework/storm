@@ -217,15 +217,15 @@ selectList :: FilterList record -> Tagged [Entity record]
 selectList x = undefined
 
 {-@
-project :: forall <r1 :: Entity record -> Bool, r2 :: typ -> Bool, policy :: Entity record -> Entity User -> Bool, p :: Entity User -> Bool, selector :: Entity record -> typ -> Bool>.
+projectList :: forall <r1 :: Entity record -> Bool, r2 :: typ -> Bool, policy :: Entity record -> Entity User -> Bool, p :: Entity User -> Bool, selector :: Entity record -> typ -> Bool>.
   { row :: (Entity <r1> record) |- {v:(Entity <p> User) | True} <: {v:(Entity <policy row> User) | True} }
   { row :: (Entity <r1> record) |- typ<selector row> <: typ<r2> }
-  [(Entity <r1> record)] ->
   EntityFieldWrapper<policy, selector> record typ ->
+  [(Entity <r1> record)] ->
   Tagged<p> [typ<r2>]
 @-}
-project :: [Entity record] -> EntityFieldWrapper record typ -> Tagged [typ]
-project = undefined
+projectList :: EntityFieldWrapper record typ -> [Entity record] -> Tagged [typ]
+projectList = undefined
 
 instance Functor Tagged where
   fmap f (Tagged x) = Tagged (f x)
@@ -299,7 +299,7 @@ exampleSelectList3 = selectList (userNameField ==. "alice" ?: Empty)
 
 {-@ projectSelect1 :: [{v:_ | userFriend (entityVal v) == id1}] -> Tagged<{\_ -> False}> [{v:_ | len v == 9}] @-}
 projectSelect1 :: [Entity User] -> Tagged [String]
-projectSelect1 users = project users userSSNField
+projectSelect1 users = projectList userSSNField users
 
 -- | This is fine: user 1 can see both the filtered rows and the name field in
 --   each of these rows
@@ -308,7 +308,7 @@ projectSelect1 users = project users userSSNField
 names :: Tagged [String]
 names = do
   rows <- selectList (userFriendField ==. id1 ?: Empty)
-  project rows userNameField
+  projectList userNameField rows
 
 -- | This is bad: the result of the query is not public
 {-@ bad1 :: Tagged<{\v -> True}> [{v: _ | userFriend (entityVal v) == id1}]
@@ -328,7 +328,7 @@ bad2 = selectList (userNameField ==. "alice" ?: Empty)
 badSSNs :: Tagged [String]
 badSSNs = do
   rows <- selectList (userFriendField ==. id1 ?: Empty)
-  project rows userSSNField
+  projectList userSSNField rows
 
 {-@
 getSharedTasks :: u:_ -> Tagged<{\viewer -> entityKey viewer == u}> [{v:_ | len v > 0}]
@@ -336,9 +336,9 @@ getSharedTasks :: u:_ -> Tagged<{\viewer -> entityKey viewer == u}> [{v:_ | len 
 getSharedTasks :: Key User -> Tagged [String]
 getSharedTasks userKey = do
   shares <- selectList (shareToField ==. userKey ?: Empty)
-  sharedFromUsers <- project shares shareFromField
+  sharedFromUsers <- projectList shareFromField shares
   sharedTodoItems <- selectList (todoItemOwnerField <-. sharedFromUsers ?: Empty)
-  project sharedTodoItems todoItemTaskField
+  projectList todoItemTaskField sharedTodoItems
 
 {-@
 getSharedTasksBad :: _ -> Tagged<{\viewer -> True}> _
@@ -346,6 +346,6 @@ getSharedTasksBad :: _ -> Tagged<{\viewer -> True}> _
 getSharedTasksBad :: Key User -> Tagged [String]
 getSharedTasksBad userKey = do
   shares <- selectList (shareToField ==. userKey ?: Empty)
-  sharedFromUsers <- project shares shareFromField
+  sharedFromUsers <- projectList shareFromField shares
   sharedTodoItems <- selectList (todoItemOwnerField <-. sharedFromUsers ?: Empty)
-  project sharedTodoItems todoItemTaskField
+  projectList todoItemTaskField sharedTodoItems
