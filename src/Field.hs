@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, TypeFamilies #-}
+{-# LANGUAGE GADTs, TypeFamilies, PartialTypeSignatures #-}
 {-@ LIQUID "--no-pattern-inline" @-}
 module Field where
 
@@ -94,17 +94,21 @@ todoItemIdField = EntityFieldWrapper TodoItemId
 todoItemOwnerField :: EntityFieldWrapper TodoItem (Key User)
 todoItemOwnerField = EntityFieldWrapper TodoItemOwner
 
-{-@ assume todoItemTaskField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == todoItemTask (entityVal row)}, {\field row -> field == todoItemTask (entityVal row)}> _ {v:_ | len v > 0} @-}
+{-@ assume todoItemTaskField :: EntityFieldWrapper <{\row viewer -> shared (todoItemOwner (entityVal row)) (entityKey viewer)}, {\row field -> field == todoItemTask (entityVal row)}, {\field row -> field == todoItemTask (entityVal row)}> _ {v:_ | len v > 0} @-}
 todoItemTaskField :: EntityFieldWrapper TodoItem String
 todoItemTaskField = EntityFieldWrapper TodoItemTask
 
 -- ** Share
 {-@
-data Share = Share
-  { shareFrom :: Key User
-  , shareTo :: Key User
-  }
+measure shared :: Key User -> Key User -> Bool
 @-}
+
+{-@
+data Share where
+  Share :: Key User -> Key User -> {v: Share | shared (shareFrom v) (shareTo v)}
+@-}
+{-@ measure shareFrom @-}
+{-@ measure shareTo @-}
 data Share = Share
   { shareFrom :: Key User
   , shareTo :: Key User
@@ -119,15 +123,15 @@ instance PersistEntity Share where
     ShareFrom :: EntityField Share (Key User)
     ShareTo :: EntityField Share (Key User)
 
-{-@ shareIdField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == entityKey row}, {\field row -> field == entityKey row}> _ _ @-}
+{-@ assume shareIdField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == entityKey row}, {\field row -> field == entityKey row}> {v: Share | shared (shareFrom v) (shareTo v)} _ @-}
 shareIdField :: EntityFieldWrapper Share (Key Share)
 shareIdField = EntityFieldWrapper ShareId
 
-{-@ shareFromField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == shareFrom (entityVal row)}, {\field row -> field == shareFrom (entityVal row)}> _ _ @-}
+{-@ assume shareFromField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == shareFrom (entityVal row)}, {\field row -> field == shareFrom (entityVal row)}> {v: Share | shared (shareFrom v) (shareTo v)} _ @-}
 shareFromField :: EntityFieldWrapper Share (Key User)
 shareFromField = EntityFieldWrapper ShareFrom
 
-{-@ shareToField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == shareTo (entityVal row)}, {\field row -> field == shareTo (entityVal row)}> _ _ @-}
+{-@ assume shareToField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == shareTo (entityVal row)}, {\field row -> field == shareTo (entityVal row)}> {v: Share | shared (shareFrom v) (shareTo v)} _ @-}
 shareToField :: EntityFieldWrapper Share (Key User)
 shareToField = EntityFieldWrapper ShareTo
 
@@ -204,9 +208,10 @@ infixr 5 ?:
 f ?: fs = f `Cons` fs
 
 {-@
-selectList :: forall <q :: Entity record -> Entity User -> Bool, r :: Entity record -> Bool, p :: Entity User -> Bool>.
-  {row :: (Entity <r> record) |- {v:(Entity <p> User) | True} <: {v:(Entity <q row> User) | True}}
-  FilterList<q, r> record -> Tagged<p> [(Entity <r> record)]
+selectList :: forall <q :: Entity record -> Entity User -> Bool, r1 :: Entity record -> Bool, r2 :: Entity record -> Bool, p :: Entity User -> Bool>.
+  { row :: record |- {v:(Entity <r1> record) | entityVal v == row} <: {v:(Entity <r2> record) | True} }
+  { row :: (Entity <r2> record) |- {v:(Entity <p> User) | True} <: {v:(Entity <q row> User) | True} }
+  FilterList<q, r1> record -> Tagged<p> [(Entity <r2> record)]
 @-}
 selectList :: FilterList record -> Tagged [Entity record]
 selectList x = undefined
@@ -324,3 +329,23 @@ badSSNs :: Tagged [String]
 badSSNs = do
   rows <- selectList (userFriendField ==. id1 ?: Empty)
   project rows userSSNField
+
+{-@
+getSharedTasks :: u:_ -> Tagged<{\viewer -> entityKey viewer == u}> [{v:_ | len v > 0}]
+@-}
+getSharedTasks :: Key User -> Tagged [String]
+getSharedTasks userKey = do
+  shares <- selectList (shareToField ==. userKey ?: Empty)
+  sharedFromUsers <- project shares shareFromField
+  sharedTodoItems <- selectList (todoItemOwnerField <-. sharedFromUsers ?: Empty)
+  project sharedTodoItems todoItemTaskField
+
+{-@
+getSharedTasksBad :: _ -> Tagged<{\viewer -> True}> _
+@-}
+getSharedTasksBad :: Key User -> Tagged [String]
+getSharedTasksBad userKey = do
+  shares <- selectList (shareToField ==. userKey ?: Empty)
+  sharedFromUsers <- project shares shareFromField
+  sharedTodoItems <- selectList (todoItemOwnerField <-. sharedFromUsers ?: Empty)
+  project sharedTodoItems todoItemTaskField
