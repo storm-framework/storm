@@ -1,15 +1,28 @@
-{-# LANGUAGE GADTs, TypeFamilies, PartialTypeSignatures #-}
+{-# LANGUAGE GADTs, TypeFamilies, GeneralizedNewtypeDeriving, PartialTypeSignatures, QuasiQuotes, TemplateHaskell, MultiParamTypeClasses #-}
 {-@ LIQUID "--no-pattern-inline" @-}
 module Field where
 
+import Data.Text (Text)
+import Data.Aeson (ToJSON, FromJSON)
+import Database.Persist (PersistField, PersistValue, PersistEntity, Key, EntityField, Unique)
 import qualified Database.Persist
 import qualified Database.Persist.Sqlite
 import qualified Database.Persist.TH
+import qualified Data.Text
+import qualified Data.Proxy
+import qualified Data.Map.Internal
+import qualified GHC.Int
+import Database.Persist.TH (mkPersist, sqlSettings, persistLowerCase)
 
 -- * Models
-class PersistEntity record where
-  data Key record
-  data EntityField record :: * -> *
+-- class PersistEntity record where
+--   data Key record
+--   data EntityField record :: * -> *
+--   data Unique record
+
+--   keyToValues :: Key record -> [PersistValue]
+--   keyFromValues :: [PersistValue] -> Either Text (Key record)
+--   persistIdField :: EntityField record (Key record)
 
 {-@
 data EntityFieldWrapper record typ <policy :: Entity record -> Entity User -> Bool, selector :: Entity record -> typ -> Bool, inverseselector :: typ -> Entity record -> Bool> = EntityFieldWrapper _
@@ -37,21 +50,270 @@ data User = User
   , userSSN :: {v:_ | len v == 9}
   }
 @-}
-data User = User
-  { userName :: String
-  , userFriend :: Key User
-  , userSSN :: String
-  } deriving (Eq, Show)
 
-instance PersistEntity User where
-  data Key User = UserKey Int
-    deriving (Eq, Show)
+-- data User = User
+--   { userName :: String
+--   , userFriend :: Key User
+--   , userSSN :: String
+--   } deriving (Eq, Show)
 
-  data EntityField User typ where
-    UserId :: EntityField User (Key User)
-    UserName :: EntityField User String
-    UserFriend :: EntityField User (Key User)
-    UserSSN :: EntityField User String
+-- instance PersistEntity User where
+--   newtype Key User = UserKey Int
+--     deriving (PersistField, ToJSON, FromJSON, Show, Read, Eq, Ord)
+
+--   data EntityField User typ where
+--     UserId :: EntityField User (Key User)
+--     UserName :: EntityField User String
+--     UserFriend :: EntityField User (Key User)
+--     UserSSN :: EntityField User String
+
+--   data Unique User
+
+--   keyToValues = undefined
+--   keyFromValues = undefined
+--   persistIdField = UserId
+
+-- TODO: This complains about fromPersistValues, which is legitimate. What should we do?
+
+mkPersist sqlSettings [persistLowerCase|
+User
+  name String
+  friend UserId
+  sSN String
+
+TodoItem
+  owner UserId
+  task String
+
+Share
+  from UserId
+  to UserId
+|]
+
+-- mapLeft :: (a -> b) -> Either a c -> Either b c
+-- mapLeft _ (Right x) = Right x
+-- mapLeft f (Left x) = Left (f x)
+
+-- headNote :: [b] -> b
+-- headNote = head
+
+-- fieldError :: Text -> a -> Text
+-- fieldError err _ = err
+
+-- data User = User {userName :: !String,
+--               userFriend :: !(Key User),
+--               userSSN :: !String}
+--       deriving ()
+-- type UserId = Key User
+-- instance PersistEntity User where
+--   type PersistEntityBackend User = Database.Persist.Sqlite.SqlBackend
+--   data Unique User
+--   newtype Key User
+--     = UserKey {unUserKey :: (Database.Persist.Sqlite.BackendKey Database.Persist.Sqlite.SqlBackend)}
+--     deriving (Show,
+--               Read,
+--               Eq,
+--               Ord,
+--               PersistField,
+--               ToJSON,
+--               FromJSON)
+--   data EntityField User typ
+--     = typ ~ Key User => UserId |
+--       typ ~ String => UserName |
+--       typ ~ Key User => UserFriend |
+--       typ ~ String => UserSSN
+--   keyToValues
+--     = ((: []) . (Database.Persist.Sqlite.toPersistValue . unUserKey))
+--   keyFromValues
+--     = (fmap UserKey
+--          . (Database.Persist.Sqlite.fromPersistValue
+--               . headNote))
+--   entityDef _
+--     = (((((((((Database.Persist.Sqlite.EntityDef
+--                  (Database.Persist.Sqlite.HaskellName
+--                     (Database.Persist.TH.packPTH "User")))
+--                 (Database.Persist.Sqlite.DBName
+--                    (Database.Persist.TH.packPTH "user")))
+--                (((((((Database.Persist.Sqlite.FieldDef
+--                         (Database.Persist.Sqlite.HaskellName
+--                            (Database.Persist.TH.packPTH "Id")))
+--                        (Database.Persist.Sqlite.DBName
+--                           (Database.Persist.TH.packPTH "id")))
+--                       ((Database.Persist.Sqlite.FTTypeCon Nothing)
+--                          (Database.Persist.TH.packPTH "UserId")))
+--                      Database.Persist.Sqlite.SqlInt64)
+--                     [])
+--                    True)
+--                   ((Database.Persist.Sqlite.ForeignRef
+--                       (Database.Persist.Sqlite.HaskellName
+--                          (Database.Persist.TH.packPTH "User")))
+--                      ((Database.Persist.Sqlite.FTTypeCon
+--                          (Just (Database.Persist.TH.packPTH "Data.Int")))
+--                         (Database.Persist.TH.packPTH "Int64")))))
+--               [])
+--              [((((((Database.Persist.Sqlite.FieldDef
+--                       (Database.Persist.Sqlite.HaskellName
+--                          (Database.Persist.TH.packPTH "name")))
+--                      (Database.Persist.Sqlite.DBName
+--                         (Database.Persist.TH.packPTH "name")))
+--                     ((Database.Persist.Sqlite.FTTypeCon Nothing)
+--                        (Database.Persist.TH.packPTH "String")))
+--                    Database.Persist.Sqlite.SqlString)
+--                   [])
+--                  True)
+--                 Database.Persist.Sqlite.NoReference,
+--               ((((((Database.Persist.Sqlite.FieldDef
+--                       (Database.Persist.Sqlite.HaskellName
+--                          (Database.Persist.TH.packPTH "friend")))
+--                      (Database.Persist.Sqlite.DBName
+--                         (Database.Persist.TH.packPTH "friend")))
+--                     ((Database.Persist.Sqlite.FTTypeCon Nothing)
+--                        (Database.Persist.TH.packPTH "UserId")))
+--                    (Database.Persist.Sqlite.sqlType
+--                       (Data.Proxy.Proxy :: Data.Proxy.Proxy GHC.Int.Int64)))
+--                   [])
+--                  True)
+--                 ((Database.Persist.Sqlite.ForeignRef
+--                     (Database.Persist.Sqlite.HaskellName
+--                        (Database.Persist.TH.packPTH "User")))
+--                    ((Database.Persist.Sqlite.FTTypeCon
+--                        (Just (Database.Persist.TH.packPTH "Data.Int")))
+--                       (Database.Persist.TH.packPTH "Int64"))),
+--               ((((((Database.Persist.Sqlite.FieldDef
+--                       (Database.Persist.Sqlite.HaskellName
+--                          (Database.Persist.TH.packPTH "sSN")))
+--                      (Database.Persist.Sqlite.DBName
+--                         (Database.Persist.TH.packPTH "s_s_n")))
+--                     ((Database.Persist.Sqlite.FTTypeCon Nothing)
+--                        (Database.Persist.TH.packPTH "String")))
+--                    Database.Persist.Sqlite.SqlString)
+--                   [])
+--                  True)
+--                 Database.Persist.Sqlite.NoReference])
+--             [])
+--            [])
+--           [])
+--          (Data.Map.Internal.fromList []))
+--         False
+--   toPersistFields (User x_a8yr x_a8ys x_a8yt)
+--     = [Database.Persist.Sqlite.SomePersistField x_a8yr,
+--        Database.Persist.Sqlite.SomePersistField x_a8ys,
+--        Database.Persist.Sqlite.SomePersistField x_a8yt]
+--   fromPersistValues
+--     [x1_a8yv, x2_a8yw, x3_a8yx]
+--     = User
+--         <$>
+--           (mapLeft
+--              (fieldError
+--                 (Database.Persist.TH.packPTH "name"))
+--              . Database.Persist.Sqlite.fromPersistValue)
+--             x1_a8yv
+--         <*>
+--           (mapLeft
+--              (fieldError
+--                 (Database.Persist.TH.packPTH "friend"))
+--              . Database.Persist.Sqlite.fromPersistValue)
+--             x2_a8yw
+--         <*>
+--           (mapLeft
+--              (fieldError
+--                 (Database.Persist.TH.packPTH "sSN"))
+--              . Database.Persist.Sqlite.fromPersistValue)
+--             x3_a8yx
+--   fromPersistValues x_a8yu
+--     = (Left
+--          $ (mappend
+--               (Database.Persist.TH.packPTH
+--                  "User: fromPersistValues failed on: "))
+--              (Data.Text.pack $ show x_a8yu))
+--   persistUniqueToFieldNames _
+--     = error "Degenerate case, should never happen"
+--   persistUniqueToValues _
+--     = error "Degenerate case, should never happen"
+--   persistUniqueKeys
+--     (User _name_a8yy _friend_a8yz _sSN_a8yA)
+--     = []
+--   persistFieldDef UserId
+--     = ((((((Database.Persist.Sqlite.FieldDef
+--               (Database.Persist.Sqlite.HaskellName
+--                  (Database.Persist.TH.packPTH "Id")))
+--              (Database.Persist.Sqlite.DBName
+--                 (Database.Persist.TH.packPTH "id")))
+--             ((Database.Persist.Sqlite.FTTypeCon Nothing)
+--                (Database.Persist.TH.packPTH "UserId")))
+--            Database.Persist.Sqlite.SqlInt64)
+--           [])
+--          True)
+--         ((Database.Persist.Sqlite.ForeignRef
+--             (Database.Persist.Sqlite.HaskellName
+--                (Database.Persist.TH.packPTH "User")))
+--            ((Database.Persist.Sqlite.FTTypeCon
+--                (Just (Database.Persist.TH.packPTH "Data.Int")))
+--               (Database.Persist.TH.packPTH "Int64")))
+--   persistFieldDef UserName
+--     = ((((((Database.Persist.Sqlite.FieldDef
+--               (Database.Persist.Sqlite.HaskellName
+--                  (Database.Persist.TH.packPTH "name")))
+--              (Database.Persist.Sqlite.DBName
+--                 (Database.Persist.TH.packPTH "name")))
+--             ((Database.Persist.Sqlite.FTTypeCon Nothing)
+--                (Database.Persist.TH.packPTH "String")))
+--            Database.Persist.Sqlite.SqlString)
+--           [])
+--          True)
+--         Database.Persist.Sqlite.NoReference
+--   persistFieldDef UserFriend
+--     = ((((((Database.Persist.Sqlite.FieldDef
+--               (Database.Persist.Sqlite.HaskellName
+--                  (Database.Persist.TH.packPTH "friend")))
+--              (Database.Persist.Sqlite.DBName
+--                 (Database.Persist.TH.packPTH "friend")))
+--             ((Database.Persist.Sqlite.FTTypeCon Nothing)
+--                (Database.Persist.TH.packPTH "UserId")))
+--            Database.Persist.Sqlite.SqlInt64)
+--           [])
+--          True)
+--         ((Database.Persist.Sqlite.ForeignRef
+--             (Database.Persist.Sqlite.HaskellName
+--                (Database.Persist.TH.packPTH "User")))
+--            ((Database.Persist.Sqlite.FTTypeCon
+--                (Just (Database.Persist.TH.packPTH "Data.Int")))
+--               (Database.Persist.TH.packPTH "Int64")))
+--   persistFieldDef UserSSN
+--     = ((((((Database.Persist.Sqlite.FieldDef
+--               (Database.Persist.Sqlite.HaskellName
+--                  (Database.Persist.TH.packPTH "sSN")))
+--              (Database.Persist.Sqlite.DBName
+--                 (Database.Persist.TH.packPTH "s_s_n")))
+--             ((Database.Persist.Sqlite.FTTypeCon Nothing)
+--                (Database.Persist.TH.packPTH "String")))
+--            Database.Persist.Sqlite.SqlString)
+--           [])
+--          True)
+--         Database.Persist.Sqlite.NoReference
+--   persistIdField = UserId
+--   fieldLens UserId
+--     = (Database.Persist.TH.lensPTH Database.Persist.Sqlite.entityKey)
+--         (\ (Database.Persist.Sqlite.Entity _ value_a8yB) key_a8yC
+--            -> (Database.Persist.Sqlite.Entity key_a8yC) value_a8yB)
+--   fieldLens UserName
+--     = (Database.Persist.TH.lensPTH
+--          (userName . Database.Persist.Sqlite.entityVal))
+--         (\ (Database.Persist.Sqlite.Entity key_a8yD value_a8yE) x_a8yF
+--            -> (Database.Persist.Sqlite.Entity key_a8yD)
+--                 value_a8yE {userName = x_a8yF})
+--   fieldLens UserFriend
+--     = (Database.Persist.TH.lensPTH
+--          (userFriend . Database.Persist.Sqlite.entityVal))
+--         (\ (Database.Persist.Sqlite.Entity key_a8yD value_a8yE) x_a8yF
+--            -> (Database.Persist.Sqlite.Entity key_a8yD)
+--                 value_a8yE {userFriend = x_a8yF})
+--   fieldLens UserSSN
+--     = (Database.Persist.TH.lensPTH
+--          (userSSN . Database.Persist.Sqlite.entityVal))
+--         (\ (Database.Persist.Sqlite.Entity key_a8yD value_a8yE) x_a8yF
+--            -> (Database.Persist.Sqlite.Entity key_a8yD)
+--                 value_a8yE {userSSN = x_a8yF})
 
 {-@ userIdField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == entityKey row}, {\field row -> field == entityKey row}> _ _ @-}
 userIdField :: EntityFieldWrapper User (Key User)
@@ -76,19 +338,31 @@ data TodoItem = TodoItem
   , todoItemTask :: {v:_ | len v > 0}
   }
 @-}
-data TodoItem = TodoItem
-  { todoItemOwner :: Key User
-  , todoItemTask :: String
-  } deriving (Eq, Show)
+-- data TodoItem = TodoItem
+--   { todoItemOwner :: Key User
+--   , todoItemTask :: String
+--   } deriving (Eq, Show)
 
-instance PersistEntity TodoItem where
-  data Key TodoItem = TodoItemKey Int
-    deriving (Eq, Show)
+-- mkPersist sqlSettings [persistLowerCase|
+-- TodoItem
+--   owner UserId
+--   task String
+-- |]
 
-  data EntityField TodoItem typ where
-    TodoItemId :: EntityField TodoItem (Key TodoItem)
-    TodoItemOwner :: EntityField TodoItem (Key User)
-    TodoItemTask :: EntityField TodoItem String
+-- instance PersistEntity TodoItem where
+--   newtype Key TodoItem = TodoItemKey Int
+--     deriving (PersistField, ToJSON, FromJSON, Show, Read, Eq, Ord)
+
+--   data EntityField TodoItem typ where
+--     TodoItemId :: EntityField TodoItem (Key TodoItem)
+--     TodoItemOwner :: EntityField TodoItem (Key User)
+--     TodoItemTask :: EntityField TodoItem String
+
+--   data Unique TodoItem
+
+--   keyToValues = undefined
+--   keyFromValues = undefined
+--   persistIdField = TodoItemId
 
 {-@ todoItemIdField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == entityKey row}, {\field row -> field == entityKey row}> _ _ @-}
 todoItemIdField :: EntityFieldWrapper TodoItem (Key TodoItem)
@@ -113,19 +387,25 @@ data Share where
 @-}
 {-@ measure shareFrom @-}
 {-@ measure shareTo @-}
-data Share = Share
-  { shareFrom :: Key User
-  , shareTo :: Key User
-  } deriving (Eq, Show)
+-- data Share = Share
+--   { shareFrom :: Key User
+--   , shareTo :: Key User
+--   } deriving (Eq, Show)
 
-instance PersistEntity Share where
-  data Key Share = ShareKey Int
-    deriving (Eq, Show)
+-- instance PersistEntity Share where
+--   newtype Key Share = ShareKey Int
+--     deriving (PersistField, ToJSON, FromJSON, Show, Read, Eq, Ord)
 
-  data EntityField Share typ where
-    ShareId :: EntityField Share (Key Share)
-    ShareFrom :: EntityField Share (Key User)
-    ShareTo :: EntityField Share (Key User)
+--   data EntityField Share typ where
+--     ShareId :: EntityField Share (Key Share)
+--     ShareFrom :: EntityField Share (Key User)
+--     ShareTo :: EntityField Share (Key User)
+
+--   data Unique Share
+
+--   keyToValues = undefined
+--   keyFromValues = undefined
+--   persistIdField = ShareId
 
 {-@ assume shareIdField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == entityKey row}, {\field row -> field == entityKey row}> {v: Share | shared (shareFrom v) (shareTo v)} _ @-}
 shareIdField :: EntityFieldWrapper Share (Key Share)
@@ -258,9 +538,10 @@ instance Monad Tagged where
   @-}
 
 -- * Client code
-{-@ reflect id1 @-}
+{-@ measure Field.id1 :: Key User @-}
+{-@ assume id1 :: {v:Key User | v == id1} @-}
 id1 :: Key User
-id1 = UserKey 1
+id1 = UserKey undefined
 
 {-@ combinatorExample1 :: RefinedFilter<{\row -> userName (entityVal row) == "alice"}, {\row v -> entityKey v == userFriend (entityVal row)}> User @-}
 combinatorExample1 :: RefinedFilter User
