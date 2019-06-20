@@ -2,6 +2,10 @@
 {-@ LIQUID "--no-pattern-inline" @-}
 module Field where
 
+import qualified Database.Persist
+import qualified Database.Persist.Sqlite
+import qualified Database.Persist.TH
+
 -- * Models
 class PersistEntity record where
   data Key record
@@ -100,7 +104,7 @@ todoItemTaskField = EntityFieldWrapper TodoItemTask
 
 -- ** Share
 {-@
-measure shared :: Key User -> Key User -> Bool
+measure shared :: Key User -> Key User -> GHC.Types.Bool
 @-}
 
 {-@
@@ -151,7 +155,7 @@ data RefinedFilter record = RefinedFilter (Filter record)
 {-@ data variance RefinedFilter covariant covariant contravariant @-}
 
 {-@
-(==.) ::
+(Field.==.) ::
 forall <policy :: Entity record -> Entity User -> Bool,
        selector :: Entity record -> typ -> Bool,
        inverseselector :: typ -> Entity record -> Bool,
@@ -166,7 +170,7 @@ forall <policy :: Entity record -> Entity User -> Bool,
 field ==. value = undefined
 
 {-@
-(<-.) ::
+(Field.<-.) ::
 forall <policy :: Entity record -> Entity User -> Bool,
        selector :: Entity record -> typ -> Bool,
        inverseselector :: typ -> Entity record -> Bool,
