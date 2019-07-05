@@ -6,6 +6,7 @@ dependencies:
 - persistent
 - persistent-sqlite
 - persistent-template
+- transformers
 
 library:
   source-dirs: src
