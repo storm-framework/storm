@@ -7,6 +7,10 @@ dependencies:
 - persistent-sqlite
 - persistent-template
 - transformers
+- mtl
+- aeson
+- text
 
-library:
+executable:
   source-dirs: src
+  main: Main
