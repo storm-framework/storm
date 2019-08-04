@@ -1,28 +1,8 @@
-{-# LANGUAGE FlexibleContexts, OverloadedStrings, UndecidableInstances, ScopedTypeVariables, FlexibleInstances, GADTs, TypeFamilies, GeneralizedNewtypeDeriving, PartialTypeSignatures, QuasiQuotes, TemplateHaskell, MultiParamTypeClasses #-}
 {-@ LIQUID "--no-pattern-inline" @-}
--- |
 
 module Tests where
-
-
-import Data.Functor.Const
-import Data.Text (Text)
-import Data.Aeson (ToJSON, FromJSON)
-import Database.Persist hiding ((==.), (<-.), selectList, selectFirst, insert, entityKey, entityVal) --(PersistField, PersistValue, PersistEntity, Key, EntityField, Unique, Filter, fieldLens, Entity(Entity))
-import qualified Database.Persist
-import qualified Database.Persist.Sqlite
-import qualified Database.Persist.TH
-import qualified Data.Text
-import qualified Data.Proxy
-import qualified GHC.Int
-import Control.Monad.Trans.Class (MonadTrans(..))
-import Control.Monad.IO.Class (MonadIO(..))
-import Control.Monad.Reader (MonadReader(..), ReaderT(..))
-import Data.Functor.Identity (Identity)
-import Database.Persist.TH (mkPersist, sqlSettings, persistLowerCase)
-import Database.Persist.Sql (SqlBackend, Migration)
-
-import Data.Maybe (fromJust)
+import Control.Monad.Reader (ReaderT)
+import Database.Persist.Sql (SqlBackend)
 
 import Core
 import Model

@@ -1,51 +1,58 @@
-{-# LANGUAGE GADTs, TypeFamilies, DeriveGeneric, GeneralizedNewtypeDeriving, OverloadedStrings, TemplateHaskell, QuasiQuotes, MultiParamTypeClasses #-}
--- {-# LANGUAGE UndecidableInstances #-}
--- {-@ LIQUID "--no-adt"                   @-}
--- {-@ LIQUID "--exact-data-cons"           @-}
--- {-@ LIQUID "--higherorder"              @-}
--- {-@ LIQUID "--no-termination" @-}
--- | Description of database records.
+-- | Where we define the model. Pretty much every module has to load this,
+-- because various definitions need to know about User -- it would be nice to
+-- decouple these.
+
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+
 module Model where
 
-import Data.Functor.Const
-import Data.Text (Text)
-import Data.Aeson (ToJSON, FromJSON)
-import Database.Persist hiding ((==.), (<-.), selectList, selectFirst, insert, entityKey, entityVal) --(PersistField, PersistValue, PersistEntity, Key, EntityField, Unique, Filter, fieldLens, Entity(Entity))
-import qualified Database.Persist
-import qualified Database.Persist.Sqlite
-import qualified Database.Persist.TH
-import qualified Data.Text
-import qualified Data.Proxy
-import qualified GHC.Int
-import Control.Monad.Trans.Class (MonadTrans(..))
-import Control.Monad.IO.Class (MonadIO(..))
-import Control.Monad.Reader (MonadReader(..), ReaderT(..))
-import Data.Functor.Identity (Identity)
-import Database.Persist.TH (mkPersist, sqlSettings, persistLowerCase)
-import Database.Persist.Sql (SqlBackend, Migration)
-
-import Data.Maybe (fromJust)
+import Database.Persist (Key)
+import qualified Database.Persist as Persist
+import Database.Persist.TH (share, mkMigrate, mkPersist, sqlSettings, persistLowerCase)
 
 import Core
 
+-- We need this wrapper because Liquid Haskell just has no idea what to do with
+-- GADT data families like EntityField. Hiding it inside a plain data type makes
+-- checking much more stable. Eventually it would be nice to be able to remove
+-- this wrapper.
+--
+-- The `policy` absref specifies who can view a given record. The `selector` and
+-- `flippedselector` connects the EntityFieldWrapper to the field selector it
+-- represents. These absrefs should be the same, just with their arguments
+-- flipped.
+
 {-@
-data EntityFieldWrapper record typ <policy :: Entity record -> Entity User -> Bool, selector :: Entity record -> typ -> Bool, inverseselector :: typ -> Entity record -> Bool> = EntityFieldWrapper _
+data EntityFieldWrapper record typ <
+    policy :: Entity record -> Entity User -> Bool
+  , selector :: Entity record -> typ -> Bool
+  , flippedselector :: typ -> Entity record -> Bool
+  > = EntityFieldWrapper _
 @-}
-data EntityFieldWrapper record typ = EntityFieldWrapper (EntityField record typ)
+data EntityFieldWrapper record typ = EntityFieldWrapper (Persist.EntityField record typ)
 {-@ data variance EntityFieldWrapper covariant covariant contravariant invariant invariant @-}
 
 
--- ** User
-{-@
-data User = User
-  { userName :: _
-  , userSSN :: {v:_ | len v == 9}
-  }
-@-}
+-- * Model
 
--- TODO: This complains about fromPersistValues, which is legitimate. What should we do?
+-- Generate the Persistent data types for the model. We refine some of those
+-- data types below. Ideally these two steps would be integrated somehow.
+--
+-- TODO: We should restrict access to some of the functions in this type class
+-- like fieldLens and fromPersistValues.
+--
+-- TODO: It would be nice if we could check this file without getting errors
+-- about e.g. methods which take Void throwing errors. We need to be able to
+-- {-@ ignore _ @-} instance methods to do this, I think.
 
-Database.Persist.TH.share [mkPersist sqlSettings, Database.Persist.TH.mkMigrate "migrateAll"] [persistLowerCase|
+share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 User
   name String
   sSN String
@@ -59,6 +66,14 @@ Share
   to UserId
 |]
 
+-- * User
+{-@
+data User = User
+  { userName :: _
+  , userSSN :: {v:_ | len v == 9}
+  }
+@-}
+
 {-@ userIdField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == entityKey row}, {\field row -> field == entityKey row}> _ _ @-}
 userIdField :: EntityFieldWrapper User (Key User)
 userIdField = EntityFieldWrapper UserId
@@ -71,7 +86,7 @@ userNameField = EntityFieldWrapper UserName
 userSSNField :: EntityFieldWrapper User String
 userSSNField = EntityFieldWrapper UserSSN
 
--- ** TodoItem
+-- * TodoItem
 {-@
 data TodoItem = TodoItem
   { todoItemOwner :: Key User
@@ -91,16 +106,7 @@ todoItemOwnerField = EntityFieldWrapper TodoItemOwner
 todoItemTaskField :: EntityFieldWrapper TodoItem String
 todoItemTaskField = EntityFieldWrapper TodoItemTask
 
--- ** Share
-{-@
-measure shared :: Key User -> Key User -> Bool
-@-}
-
--- {-@
--- data Share where
---   Share :: Key User -> Key User -> {v: Share | shared (shareFrom v) (shareTo v)}
--- @-}
-
+-- * Share
 {-@
 data Share = Share
   { shareFrom :: Key User
@@ -108,8 +114,16 @@ data Share = Share
   }
 @-}
 
+-- This measure represents the abstract relationship that the first user has
+-- shared something with the second user. It's attached to the database record
+-- that attests that relationship.
+--
+-- TODO: It's at least inadivsable, and possibly unsound, to assume that this
+-- relationship holds for any `Shared`. Really what we want is to know that it
+-- holds for any `Shared` that we get back from the database. It's not clear how
+-- to do this parametrically, though.
+{-@ measure shared :: Key User -> Key User -> Bool @-}
 {-@ invariant {v:Share | shared (shareFrom v) (shareTo v)} @-}
-
 
 {-@ assume shareIdField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == entityKey row}, {\field row -> field == entityKey row}> _ _ @-}
 shareIdField :: EntityFieldWrapper Share (Key Share)
@@ -122,4 +136,3 @@ shareFromField = EntityFieldWrapper ShareFrom
 {-@ assume shareToField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == shareTo (entityVal row)}, {\field row -> field == shareTo (entityVal row)}> _ _ @-}
 shareToField :: EntityFieldWrapper Share (Key User)
 shareToField = EntityFieldWrapper ShareTo
-

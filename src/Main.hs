@@ -1,25 +1,20 @@
-{-# LANGUAGE FlexibleContexts, OverloadedStrings, UndecidableInstances, ScopedTypeVariables, FlexibleInstances, GADTs, TypeFamilies, GeneralizedNewtypeDeriving, PartialTypeSignatures, QuasiQuotes, TemplateHaskell, MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE FlexibleContexts #-}
+
 {-@ LIQUID "--no-pattern-inline" @-}
+
 module Main where
 
-import Data.Functor.Const
-import Data.Text (Text)
-import Data.Aeson (ToJSON, FromJSON)
-import Database.Persist hiding ((==.), (<-.), selectList, selectFirst, insert, entityKey, entityVal) --(PersistField, PersistValue, PersistEntity, Key, EntityField, Unique, Filter, fieldLens, Entity(Entity))
-import qualified Database.Persist
-import qualified Database.Persist.Sqlite
-import qualified Database.Persist.TH
-import qualified Data.Text
-import qualified Data.Proxy
-import qualified GHC.Int
-import Control.Monad.Trans.Class (MonadTrans(..))
-import Control.Monad.IO.Class (MonadIO(..))
-import Control.Monad.Reader (MonadReader(..), ReaderT(..))
-import Data.Functor.Identity (Identity)
-import Database.Persist.TH (mkPersist, sqlSettings, persistLowerCase)
-import Database.Persist.Sql (SqlBackend, Migration)
-
 import Data.Maybe (fromJust)
+import Data.Text (Text)
+import Control.Monad.IO.Class (MonadIO(..))
+import Control.Monad.Trans (MonadTrans(..))
+import Control.Monad.Reader (MonadReader(..), ReaderT(..))
+import Database.Persist.Sql (SqlBackend, Migration)
+import Database.Persist (PersistStoreWrite, PersistRecordBackend)
+import qualified Database.Persist as Persist
+import qualified Database.Persist.Sqlite as Persist
 
 import Core
 import Model
@@ -27,23 +22,24 @@ import Infrastructure
 import Filters
 import Actions
 
-
 -- * Client code
 
+-- TODO: This code should be in a library somewhere
+
 runSqlite :: Text -> ReaderT SqlBackend TIO a -> TIO a
-runSqlite connStr action = TIO . Database.Persist.Sqlite.runSqlite connStr $ do
+runSqlite connStr action = TIO . Persist.runSqlite connStr $ do
   backend <- ask
   liftIO . runTIO . (`runReaderT` backend) $ action
 
 runMigration :: (MonadTIO m, MonadReader SqlBackend m) => Migration -> m ()
 runMigration migration = do
   backend <- ask
-  liftTIO . TIO . (`runReaderT` backend) $ Database.Persist.Sqlite.runMigration migration
+  liftTIO . TIO . (`runReaderT` backend) $ Persist.runMigration migration
 
 insert :: (PersistStoreWrite backend, PersistRecordBackend record backend, MonadTIO m, MonadReader backend m) => record -> m (Key record)
 insert record = do
   backend <- ask
-  liftTIO . TIO . (`runReaderT` backend) $ Database.Persist.insert record
+  liftTIO . TIO . (`runReaderT` backend) $ Persist.insert record
 
 -- TODO: Remove the Sqlite stuff from main once mapTaggedT gets worked out
 {-@ ignore main @-}
