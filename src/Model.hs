@@ -55,7 +55,7 @@ data EntityFieldWrapper record typ = EntityFieldWrapper (Persist.EntityField rec
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 User
   name String
-  sSN String
+  ssn String
 
 TodoItem
   owner UserId
@@ -70,7 +70,7 @@ Share
 {-@
 data User = User
   { userName :: _
-  , userSSN :: {v:_ | len v == 9}
+  , userSsn :: {v:_ | len v == 9}
   }
 @-}
 
@@ -82,9 +82,9 @@ userIdField = EntityFieldWrapper UserId
 userNameField :: EntityFieldWrapper User String
 userNameField = EntityFieldWrapper UserName
 
-{-@ assume userSSNField :: EntityFieldWrapper <{\row viewer -> entityKey viewer == entityKey row}, {\row field -> field == userSSN (entityVal row)}, {\field row -> field == userSSN (entityVal row)}> _ {v:_ | len v == 9} @-}
-userSSNField :: EntityFieldWrapper User String
-userSSNField = EntityFieldWrapper UserSSN
+{-@ assume userSSNField :: EntityFieldWrapper <{\row viewer -> entityKey viewer == entityKey row}, {\row field -> field == userSsn (entityVal row)}, {\field row -> field == userSsn (entityVal row)}> _ {v:_ | len v == 9} @-}
+userSsnField :: EntityFieldWrapper User String
+userSsnField = EntityFieldWrapper UserSsn
 
 -- * TodoItem
 {-@
