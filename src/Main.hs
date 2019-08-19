@@ -71,9 +71,9 @@ taggedMain = do
 {-@ printSharedWith :: _ -> TaggedT<{\_ -> False}, {\_ -> True}> _ _ @-}
 printSharedWith :: UserId -> TaggedT (ReaderT SqlBackend TIO) ()
 printSharedWith userId = do
-  user <- fromJust <$> selectFirst (userIdField ==. userId ?: Empty)
-  shares <- selectList (shareToField ==. entityKey user ?: Empty)
+  user <- fromJust <$> selectFirst (userIdField ==. userId ?: nilFL)
+  shares <- selectList (shareToField ==. userId ?: nilFL)
   sharedFromUsers <- projectList shareFromField shares
-  sharedTodoItems <- selectList (todoItemOwnerField <-. sharedFromUsers ?: Empty)
+  sharedTodoItems <- selectList (todoItemOwnerField <-. sharedFromUsers ?: nilFL)
   tasks <- projectList todoItemTaskField sharedTodoItems
   printTo user $ show tasks

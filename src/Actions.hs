@@ -26,9 +26,6 @@ selectList :: (PersistQueryRead backend, PersistRecordBackend record backend, Mo
 selectList filters = do
   backend <- ask
   liftTIO . TIO $ runReaderT (Persist.selectList (toPersistFilters filters) []) backend
-  where
-    toPersistFilters Empty = []
-    toPersistFilters (RefinedFilter f `Cons` filters) = f:(toPersistFilters filters)
 
 {-@ ignore selectFirst @-}
 {-@
@@ -41,9 +38,6 @@ selectFirst :: (PersistQueryRead backend, PersistRecordBackend record backend, M
 selectFirst filters = do
   backend <- ask
   liftTIO . TIO $ runReaderT (Persist.selectFirst (toPersistFilters filters) []) backend
-  where
-    toPersistFilters Empty = []
-    toPersistFilters (RefinedFilter f `Cons` filters) = f:(toPersistFilters filters)
 
 {-@ ignore projectList @-}
 {-@

@@ -9,39 +9,44 @@ import Core
 import Model
 
 -- * Data types
-{-@ data RefinedFilter record <r :: Entity record -> Bool, q :: Entity record -> Entity User -> Bool> = RefinedFilter _ @-}
-data RefinedFilter record = RefinedFilter (Persist.Filter record)
-{-@ data variance RefinedFilter covariant covariant contravariant @-}
-
+{-@
+data Filter record <
+    q :: Entity record -> Entity User -> Bool
+  , r :: Entity record -> Bool
+  > = Filter _
+@-}
+data Filter record = Filter (Persist.Filter record)
+{-@ data variance Filter covariant contravariant covariant @-}
 
 {-@
-data FilterList record <q :: Entity record -> Entity User -> Bool, r :: Entity record -> Bool> where
-    Empty :: FilterList<{\_ _ -> True}, {\_ -> True}> record
-  | Cons :: RefinedFilter<{\_ -> True}, {\_ _ -> False}> record ->
-            FilterList<{\_ _ -> False}, {\_ -> True}> record ->
-            FilterList<q, r> record
+data FilterList record <
+    q :: Entity record -> Entity User -> Bool
+  , r :: Entity record -> Bool
+> = FilterList _
 @-}
+data FilterList a = FilterList  { toPersistFilters :: [Persist.Filter a] }
 {-@ data variance FilterList covariant contravariant covariant @-}
-data FilterList a = Empty | Cons (RefinedFilter a) (FilterList a)
 
--- Don't use `Cons` to construct FilterLists: only ever use `?:`. This should be
--- enforced by not exporting `Cons`.
+{-@ assume nilFL :: FilterList<{\_ _ -> True}, {\_ -> True}> record @-}
+nilFL :: FilterList record
+nilFL = FilterList []
 
 infixr 5 ?:
 {-@
-(?:) :: forall <r :: Entity record -> Bool, r1 :: Entity record -> Bool, r2 :: Entity record -> Bool,
+assume (?:) :: forall <r :: Entity record -> Bool, r1 :: Entity record -> Bool, r2 :: Entity record -> Bool,
                 q :: Entity record -> Entity User -> Bool, q1 :: Entity record -> Entity User -> Bool, q2 :: Entity record -> Entity User -> Bool>.
   {row1 :: (Entity <r1> record), row2 :: (Entity <r2> record) |- {v:Entity record | v == row1 && v == row2} <: {v:(Entity <r> record) | True}}
   {row :: (Entity <r> record) |- {v:(Entity <q row> User) | True} <: {v:(Entity <q1 row> User) | True}}
   {row :: (Entity <r> record) |- {v:(Entity <q row> User) | True} <: {v:(Entity <q2 row> User) | True}}
-  RefinedFilter<r1, q1> record ->
+  Filter<q1, r1> record ->
   FilterList<q2, r2> record ->
   FilterList<q, r> record
 @-}
-(?:) :: RefinedFilter record -> FilterList record -> FilterList record
-f ?: fs = f `Cons` fs
+(?:) :: Filter record -> FilterList record -> FilterList record
+Filter f ?: FilterList fs = FilterList (f:fs)
 
 -- * Combinators
+
 {-@
 (Filters.==.) ::
 forall <policy :: Entity record -> Entity User -> Bool,
@@ -52,10 +57,10 @@ forall <policy :: Entity record -> Entity User -> Bool,
        r :: typ -> Bool>.
   { row :: (Entity record), value :: typ<r> |- {field:(typ<selector row>) | field == value} <: typ<fieldfilter> }
   { field :: typ<fieldfilter> |- {v:(Entity <inverseselector field> record) | True} <: {v:(Entity <filter> record) | True} }
-  EntityFieldWrapper<policy, selector, inverseselector> record typ -> typ<r> -> RefinedFilter<filter, policy> record
+  EntityFieldWrapper<policy, selector, inverseselector> record typ -> typ<r> -> Filter<policy, filter> record
 @-}
-(==.) :: PersistField typ => EntityFieldWrapper record typ -> typ -> RefinedFilter record
-(EntityFieldWrapper field) ==. value = RefinedFilter (field Persist.==. value)
+(==.) :: PersistField typ => EntityFieldWrapper record typ -> typ -> Filter record
+(EntityFieldWrapper field) ==. value = Filter (field Persist.==. value)
 
 {-@
 (Filters.<-.) ::
@@ -67,7 +72,7 @@ forall <policy :: Entity record -> Entity User -> Bool,
        r :: typ -> Bool>.
   { row :: (Entity record), value :: typ<r> |- {field:(typ<selector row>) | field == value} <: typ<fieldfilter> }
   { field :: typ<fieldfilter> |- {v:(Entity <inverseselector field> record) | True} <: {v:(Entity <filter> record) | True} }
-  EntityFieldWrapper<policy, selector, inverseselector> record typ -> [typ<r>] -> RefinedFilter<filter, policy> record
+  EntityFieldWrapper<policy, selector, inverseselector> record typ -> [typ<r>] -> Filter<policy, filter> record
 @-}
-(<-.) :: PersistField typ => EntityFieldWrapper record typ -> [typ] -> RefinedFilter record
-(EntityFieldWrapper field) <-. value = RefinedFilter (field Persist.<-. value)
+(<-.) :: PersistField typ => EntityFieldWrapper record typ -> [typ] -> Filter record
+(EntityFieldWrapper field) <-. value = Filter (field Persist.<-. value)
