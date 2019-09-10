@@ -11,12 +11,13 @@ module Main where
 
 import Data.Maybe (fromJust)
 import Data.Text (Text)
+import Data.ByteString.Lazy.Char8 (pack)
 import Control.Exception (try)
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans (MonadTrans(..))
 import Control.Monad.Reader (MonadReader(..), ReaderT(..))
-import Database.Persist.Sql (SqlBackend, Migration)
-import Database.Persist (PersistStoreWrite, PersistRecordBackend)
+import Database.Persist.Sqlite (SqlBackend, Migration, runMigration, runSqlite)
+import Database.Persist (PersistStoreWrite, PersistRecordBackend, insert)
 import Data.Typeable (Typeable)
 import qualified Database.Persist as Persist
 import qualified Database.Persist.Sqlite as Persist
@@ -34,73 +35,61 @@ import Actions
 
 -- * Client code
 
--- TODO: This code should be in a library somewhere
+data Config = Config
+  { backend :: SqlBackend
+  , aliceId :: UserId
+  , bobId :: UserId
+  }
 
-runSqlite :: Text -> ReaderT SqlBackend TIO a -> TIO a
-runSqlite connStr action = TIO . Persist.runSqlite connStr $ do
-  backend <- ask
-  liftIO . runTIO . (`runReaderT` backend) $ action
-
-runMigration :: (MonadTIO m, MonadReader SqlBackend m) => Migration -> m ()
-runMigration migration = do
-  backend <- ask
-  liftTIO . TIO . (`runReaderT` backend) $ Persist.runMigration migration
-
-insert :: (PersistStoreWrite backend, PersistRecordBackend record backend, MonadTIO m, MonadReader backend m) => record -> m (Key record)
-insert record = do
-  backend <- ask
-  liftTIO . TIO . (`runReaderT` backend) $ Persist.insert record
-
--- -- TODO: Remove the Sqlite stuff from main once mapTaggedT gets worked out
--- {-@ ignore main @-}
--- main :: IO ()
--- main = runTIO . unTag . mapTaggedT (runSqlite ":memory:") $ taggedMain
-
-setupDB :: ReaderT SqlBackend TIO (UserId, UserId)
-setupDB = do
+setup :: MonadIO m => ReaderT SqlBackend m Config
+setup = do
   runMigration migrateAll
 
-  aliceId <- insert $ User "Alice" "123456789"
-  bobId <- insert $ User "Bob" "987654321"
+  aId <- insert $ User "Alice" "123456789"
+  bId <- insert $ User "Bob" "987654321"
 
-  insert $ TodoItem bobId "Get groceries"
-  insert $ TodoItem bobId "Vacuum"
-  insert $ TodoItem aliceId "Submit paper"
+  insert $ TodoItem bId "Get groceries"
+  insert $ TodoItem bId "Submit paper"
+  insert $ TodoItem aId "Research"
 
-  insert $ Share bobId aliceId
+  insert $ Share bId aId
 
-  return (aliceId, bobId)
+  back <- ask
+  return $ Config back aId bId
 
-{-@ taggedMain :: TaggedT<{\_ -> False}, {\_ -> True}> _ _ @-}
-taggedMain ::  TaggedT (ReaderT SqlBackend TIO) ()
-taggedMain = do
-  (aliceId, bobId) <- lift setupDB
-  printSharedWith aliceId
-  printSharedWith bobId
-
-{-@ printSharedWith :: _ -> TaggedT<{\_ -> False}, {\_ -> True}> _ _ @-}
-printSharedWith :: UserId -> TaggedT (ReaderT SqlBackend TIO) ()
-printSharedWith userId = do
+{-@ getSharedWith :: _ -> TaggedT<{\_ -> False}, {\_ -> True}> _ _ @-}
+getSharedWith :: (MonadReader SqlBackend m, MonadTIO m) => UserId -> TaggedT m [String]
+getSharedWith userId = do
   user <- fromJust <$> selectFirst (userIdField ==. userId ?: nilFL)
   shares <- selectList (shareToField ==. userId ?: nilFL)
   sharedFromUsers <- projectList shareFromField shares
   sharedTodoItems <- selectList (todoItemOwnerField <-. sharedFromUsers ?: nilFL)
-  tasks <- projectList todoItemTaskField sharedTodoItems
-  printTo user $ show tasks
+  projectList todoItemTaskField sharedTodoItems
 
 main :: IO ()
-main = runFrankieServer "dev" $ do
-  mode "dev" $ do
-    host "localhost"
-    port 3000
-    appState ()
+main = runSqlite ":memory:" $ do
+  cfg <- setup
+  liftIO . runFrankieServer "dev" $ do
+    mode "dev" $ do
+      host "localhost"
+      port 3000
+      appState cfg
 
-  dispatch $ do
-    get "/" home
-    fallback $ respond notFound
+    dispatch $ do
+      get "/" home
+      fallback $ respond notFound
 
-home :: TaggedT (Controller () TIO) ()
-home = lift $ respond $ okHtml "Hello, world!"
+home :: TaggedT (Controller Config TIO) ()
+home = do
+  aId <- aliceId <$> lift getAppState
+  sharedTasks <- mapTaggedT (readingLocal backend) $ getSharedWith aId
+  lift . respond . okHtml . pack . show $ sharedTasks
+
+readingLocal :: Monad m => (s -> r) -> ReaderT r m a -> Controller s m a
+readingLocal f m = getAppState >>= lift . runReaderT m . f
+
+test :: Monad m => TaggedT (Controller Config m) Config
+test = lift getAppState
 
 instance (Typeable s, Typeable m, Typeable a, RequestHandler (Controller s m a) s m) => RequestHandler (TaggedT (Controller s m) a) s m where
   handlerToController args = handlerToController args . unTag

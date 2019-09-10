@@ -13,6 +13,7 @@ dependencies:
 - lio-http-server
 - wai
 - warp
+- bytestring
 
 executable:
   source-dirs: src
