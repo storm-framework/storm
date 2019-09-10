@@ -117,10 +117,13 @@ toWaiApplication app wReq wRespond = do
   resp <- runTIO $ app req
   wRespond $ toWaiResponse resp
     where req :: Request TIO
-          req = let pI0 = Wai.pathInfo wReq
-                    pI1 = if (not . null $ pI0) && (last pI0 == Text.empty)
-                            then init pI0
-                            else pI0
-                in RequestTIO $ wReq { Wai.pathInfo = pI1 }
+          req = RequestTIO $ wReq { Wai.pathInfo = trimPath $ Wai.pathInfo wReq }
           toWaiResponse :: Response -> Wai.Response
           toWaiResponse (Response status headers body) = Wai.responseLBS status headers body
+
+{-@ ignore trimPath @-}
+trimPath :: [Text] -> [Text]
+trimPath path =
+  if (not . null $ path) && Text.null (last path)
+  then init path
+  else path

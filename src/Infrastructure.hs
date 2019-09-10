@@ -31,8 +31,7 @@ liftTaggedT :: Monad m => m a -> TaggedT m a
 liftTaggedT = TaggedT
 
 {-@ ignore mapTaggedT @-}
--- TODO: This causes LH crashes, but it also might be unsound re: security.
--- {-@ assume mapTaggedT :: forall <label :: Entity User -> Bool, clear :: Entity User -> Bool>. (m a -> n b) -> TaggedT<label, clear> m a -> TaggedT<label, clear> n b  @-}
+{-@ assume mapTaggedT :: forall <label :: Entity User -> Bool, clear :: Entity User -> Bool>. _ -> TaggedT<label, clear> _ _ -> TaggedT<label, clear> _ _  @-}
 mapTaggedT :: (m a -> n b) -> TaggedT m a -> TaggedT n b
 mapTaggedT f = TaggedT . f . unTag
 

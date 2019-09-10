@@ -82,7 +82,7 @@ userIdField = EntityFieldWrapper UserId
 userNameField :: EntityFieldWrapper User String
 userNameField = EntityFieldWrapper UserName
 
-{-@ assume userSSNField :: EntityFieldWrapper <{\row viewer -> entityKey viewer == entityKey row}, {\row field -> field == userSsn (entityVal row)}, {\field row -> field == userSsn (entityVal row)}> _ {v:_ | len v == 9} @-}
+{-@ assume userSsnField :: EntityFieldWrapper <{\row viewer -> entityKey viewer == entityKey row}, {\row field -> field == userSsn (entityVal row)}, {\field row -> field == userSsn (entityVal row)}> _ {v:_ | len v == 9} @-}
 userSsnField :: EntityFieldWrapper User String
 userSsnField = EntityFieldWrapper UserSsn
 
