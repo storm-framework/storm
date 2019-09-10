@@ -7,3 +7,9 @@ packages:
   # - persistent
   # - persistent-sqlite
   # - persistent-template
+
+extra-deps:
+- github: rosekunkel/lio
+  commit: b2203f84a8f5807f04cc4e8444d29cbfaca4d8f6
+  subdirs:
+  - lio-http-server

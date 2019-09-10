@@ -10,6 +10,9 @@ dependencies:
 - mtl
 - aeson
 - text
+- lio-http-server
+- wai
+- warp
 
 executable:
   source-dirs: src
