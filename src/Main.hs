@@ -2,6 +2,8 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 {-@ LIQUID "--no-pattern-inline" @-}
 
@@ -15,6 +17,7 @@ import Control.Monad.Trans (MonadTrans(..))
 import Control.Monad.Reader (MonadReader(..), ReaderT(..))
 import Database.Persist.Sql (SqlBackend, Migration)
 import Database.Persist (PersistStoreWrite, PersistRecordBackend)
+import Data.Typeable (Typeable)
 import qualified Database.Persist as Persist
 import qualified Database.Persist.Sqlite as Persist
 import qualified Network.Wai as Wai
@@ -96,18 +99,22 @@ main = runFrankieServer "dev" $ do
     get "/" home
     fallback $ respond notFound
 
-home :: Controller () IO ()
-home = respond $ okHtml "Hello, world!"
+home :: TaggedT (Controller () TIO) ()
+home = lift $ respond $ okHtml "Hello, world!"
 
-instance WebMonad IO where
-  data Request IO = RequestIO { unRequestIO :: Wai.Request }
-  reqMethod      = Wai.requestMethod . unRequestIO
-  reqHttpVersion = Wai.httpVersion . unRequestIO
-  reqPathInfo    = Wai.pathInfo . unRequestIO
-  reqQueryString = Wai.queryString . unRequestIO
-  reqHeaders     = Wai.requestHeaders . unRequestIO
-  reqBody        = Wai.strictRequestBody . unRequestIO
-  tryWeb act     = do er <- try act
+instance (Typeable s, Typeable m, Typeable a, RequestHandler (Controller s m a) s m) => RequestHandler (TaggedT (Controller s m) a) s m where
+  handlerToController args = handlerToController args . unTag
+  reqHandlerArgTy = reqHandlerArgTy . unTag
+
+instance WebMonad TIO where
+  data Request TIO = RequestTIO { unRequestTIO :: Wai.Request }
+  reqMethod      = Wai.requestMethod . unRequestTIO
+  reqHttpVersion = Wai.httpVersion . unRequestTIO
+  reqPathInfo    = Wai.pathInfo . unRequestTIO
+  reqQueryString = Wai.queryString . unRequestTIO
+  reqHeaders     = Wai.requestHeaders . unRequestTIO
+  reqBody        = TIO . Wai.strictRequestBody . unRequestTIO
+  tryWeb act     = do er <- (TIO . try . runTIO) act
                       case er of
                         Left e -> return . Left . toException $ e
                         r -> return r
@@ -116,15 +123,15 @@ instance WebMonad IO where
                    Wai.setServerName "lio-http-server" $ Wai.defaultSettings
     in Wai.runSettings settings $ toWaiApplication app
 
-toWaiApplication :: Application IO -> Wai.Application
+toWaiApplication :: Application TIO -> Wai.Application
 toWaiApplication app wReq wRespond = do
-  resp <- app req
+  resp <- runTIO $ app req
   wRespond $ toWaiResponse resp
-    where req :: Request IO
+    where req :: Request TIO
           req = let pI0 = Wai.pathInfo wReq
                     pI1 = if (not . null $ pI0) && (last pI0 == Text.empty)
                             then init pI0
                             else pI0
-                in RequestIO $ wReq { Wai.pathInfo = pI1 }
+                in RequestTIO $ wReq { Wai.pathInfo = pI1 }
           toWaiResponse :: Response -> Wai.Response
           toWaiResponse (Response status headers body) = Wai.responseLBS status headers body
