@@ -16,6 +16,8 @@ module Model where
 import Database.Persist (Key)
 import qualified Database.Persist as Persist
 import Database.Persist.TH (share, mkMigrate, mkPersist, sqlSettings, persistLowerCase)
+import Data.Text (Text)
+import qualified Data.Text as Text
 
 import Core
 
@@ -54,12 +56,12 @@ data EntityFieldWrapper record typ = EntityFieldWrapper (Persist.EntityField rec
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 User
-  name String
-  ssn String
+  name Text
+  ssn Text
 
 TodoItem
   owner UserId
-  task String
+  task Text
 
 Share
   from UserId
@@ -70,7 +72,7 @@ Share
 {-@
 data User = User
   { userName :: _
-  , userSsn :: {v:_ | len v == 9}
+  , userSsn :: {v:_ | tlen v == 9}
   }
 @-}
 
@@ -79,18 +81,18 @@ userIdField :: EntityFieldWrapper User (Key User)
 userIdField = EntityFieldWrapper UserId
 
 {-@ userNameField :: EntityFieldWrapper <{\row viewer -> entityKey viewer == entityKey row}, {\row field -> field == userName (entityVal row)}, {\field row -> field == userName (entityVal row)}> _ _ @-}
-userNameField :: EntityFieldWrapper User String
+userNameField :: EntityFieldWrapper User Text
 userNameField = EntityFieldWrapper UserName
 
-{-@ assume userSsnField :: EntityFieldWrapper <{\row viewer -> entityKey viewer == entityKey row}, {\row field -> field == userSsn (entityVal row)}, {\field row -> field == userSsn (entityVal row)}> _ {v:_ | len v == 9} @-}
-userSsnField :: EntityFieldWrapper User String
+{-@ assume userSsnField :: EntityFieldWrapper <{\row viewer -> entityKey viewer == entityKey row}, {\row field -> field == userSsn (entityVal row)}, {\field row -> field == userSsn (entityVal row)}> _ {v:_ | tlen v == 9} @-}
+userSsnField :: EntityFieldWrapper User Text
 userSsnField = EntityFieldWrapper UserSsn
 
 -- * TodoItem
 {-@
 data TodoItem = TodoItem
   { todoItemOwner :: Key User
-  , todoItemTask :: {v:_ | len v > 0}
+  , todoItemTask :: {v:_ | tlen v > 0}
   }
 @-}
 
@@ -102,8 +104,8 @@ todoItemIdField = EntityFieldWrapper TodoItemId
 todoItemOwnerField :: EntityFieldWrapper TodoItem (Key User)
 todoItemOwnerField = EntityFieldWrapper TodoItemOwner
 
-{-@ assume todoItemTaskField :: EntityFieldWrapper <{\row viewer -> shared (todoItemOwner (entityVal row)) (entityKey viewer)}, {\row field -> field == todoItemTask (entityVal row)}, {\field row -> field == todoItemTask (entityVal row)}> _ {v:_ | len v > 0} @-}
-todoItemTaskField :: EntityFieldWrapper TodoItem String
+{-@ assume todoItemTaskField :: EntityFieldWrapper <{\row viewer -> shared (todoItemOwner (entityVal row)) (entityKey viewer)}, {\row field -> field == todoItemTask (entityVal row)}, {\field row -> field == todoItemTask (entityVal row)}> _ {v:_ | tlen v > 0} @-}
+todoItemTaskField :: EntityFieldWrapper TodoItem Text
 todoItemTaskField = EntityFieldWrapper TodoItemTask
 
 -- * Share

@@ -73,8 +73,8 @@ renderTemplate templateData = do
     searchDirs = ["templates"]
 
 data Overview = Overview
-  { overviewUsername :: String
-  , overviewSharedTasks :: [String]
+  { overviewUsername :: Text
+  , overviewSharedTasks :: [Text]
   }
 
 instance TemplateData Overview where

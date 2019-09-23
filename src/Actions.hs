@@ -8,6 +8,8 @@ import Data.Functor.Const (Const(..))
 import Control.Monad.Reader (MonadReader(..), runReaderT)
 import Database.Persist (PersistQueryRead, PersistRecordBackend, PersistEntity)
 import qualified Database.Persist as Persist
+import qualified Data.Text as Text
+import Data.Text (Text)
 
 import Core
 import Model
@@ -69,4 +71,4 @@ assume printTo :: user:_ -> _ -> TaggedT<{\_ -> True}, {\viewer -> viewer == use
 @-}
 printTo :: MonadTIO m => Entity User -> String -> TaggedT m ()
 printTo user str = liftTIO . TIO . putStrLn . mconcat $
-  ["[", userName . entityVal $ user, "] ", str]
+  ["[", Text.unpack . userName . entityVal $ user, "] ", str]

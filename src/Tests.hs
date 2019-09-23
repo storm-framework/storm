@@ -1,8 +1,11 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 {-@ LIQUID "--no-pattern-inline" @-}
 
 module Tests where
 import Control.Monad.Reader (ReaderT)
 import Database.Persist.Sql (SqlBackend)
+import Data.Text (Text)
 
 import Core
 import Model
@@ -90,7 +93,7 @@ bad2 = selectList (userNameField ==. "alice" ?: nilFL)
 {-@
 getSharedTasks :: u:_ -> TaggedT<{\viewer -> entityKey viewer == u}, {\_ -> False}> _ [{v:_ | len v > 0}]
 @-}
-getSharedTasks :: Key User -> TaggedT (ReaderT SqlBackend TIO) [String]
+getSharedTasks :: Key User -> TaggedT (ReaderT SqlBackend TIO) [Text]
 getSharedTasks userKey = do
   shares <- selectList (shareToField ==. userKey ?: nilFL)
   sharedFromUsers <- projectList shareFromField shares
@@ -131,7 +134,7 @@ testBind3 = action3 >> action3
 {-@
 getSharedTasksBad :: _ -> TaggedT<{\viewer -> True}, {\_ -> False}> _ _
 @-}
-getSharedTasksBad :: Key User -> TaggedT (ReaderT SqlBackend TIO) [String]
+getSharedTasksBad :: Key User -> TaggedT (ReaderT SqlBackend TIO) [Text]
 getSharedTasksBad userKey = do
   shares <- selectList nilFL
   sharedFromUsers <- projectList shareFromField shares
