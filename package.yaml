@@ -15,6 +15,7 @@ dependencies:
 - warp
 - bytestring
 - mustache
+- unordered-containers
 
 executable:
   source-dirs: src

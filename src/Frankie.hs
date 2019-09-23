@@ -38,7 +38,7 @@ assertCurrentUser :: Monad m => Entity User -> TaggedT m ()
 assertCurrentUser _ = return ()
 
 -- TODO: Fill this out
-{-
+{-@
 instance MonadController s w m => MonadController s w (TaggedT m) where
   respond :: Response -> TaggedT<{\_ -> True}, {\u -> u == currentUser}> m a
 @-}

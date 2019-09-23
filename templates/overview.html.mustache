@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8">
+    <title>Overview for {{username}}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+  </head>
+  <body>
+    <h1>Shared with {{username}}</h1>
+    <ul>
+    {{#sharedTasks}}
+      <li>{{text}}
+    {{/sharedTasks}}
+    </ul>
+  </body>
+</html>
