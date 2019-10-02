@@ -30,8 +30,10 @@ type Tagged a = TaggedT Identity a
 liftTaggedT :: Monad m => m a -> TaggedT m a
 liftTaggedT = TaggedT
 
-{-@ ignore mapTaggedT @-}
-{-@ assume mapTaggedT :: forall <label :: Entity User -> Bool, clear :: Entity User -> Bool>. _ -> TaggedT<label, clear> _ _ -> TaggedT<label, clear> _ _  @-}
+-- {-@ ignore mapTaggedT @-}
+-- {-@
+--   assume mapTaggedT :: forall <label :: Entity User -> Bool, clear :: Entity User -> Bool, postcondition :: a -> b -> Bool>.
+-- (m a -> n <postcondition a b) -> TaggedT<label, clear> m a -> TaggedT<label, clear> n b  @-}
 mapTaggedT :: (m a -> n b) -> TaggedT m a -> TaggedT n b
 mapTaggedT f = TaggedT . f . unTag
 

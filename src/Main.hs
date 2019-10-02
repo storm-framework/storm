@@ -23,8 +23,8 @@ import Database.Persist (PersistStoreWrite, PersistRecordBackend, insert)
 import qualified Data.ByteString.Lazy as ByteString
 import qualified Data.Text.Encoding as Text
 import qualified Text.Mustache as Mustache
-import Text.Mustache ((~>))
-import Text.Mustache.Types as Mustache
+import Text.Mustache ((~>), ToMustache(..))
+import qualified Text.Mustache.Types as Mustache
 import Control.Concurrent.MVar
 import qualified Data.HashMap.Strict as HashMap
 
@@ -44,6 +44,9 @@ data Config = Config
   , configTemplateCache :: !(MVar Mustache.TemplateCache)
   }
 
+instance HasSqlBackend Config where
+  getSqlBackend = configBackend
+
 class ToMustache d => TemplateData d where
   templateFile :: FilePath
 
@@ -57,7 +60,7 @@ getOrLoadTemplate searchDirs file = do
     Nothing -> do
       liftTIO $ TIO $ Mustache.compileTemplateWithCache searchDirs oldCache file >>= \case
         Right template ->
-          let updatedCache = HashMap.insert (name template) template (partials template) in do
+          let updatedCache = HashMap.insert (Mustache.name template) template (Mustache.partials template) in do
             modifyMVar_ cacheMVar (\currentCache -> evaluate $ currentCache <> updatedCache)
             pure template
         Left err -> error $ "Error parsing template " ++ file ++ ": " ++ show err
@@ -81,9 +84,9 @@ instance TemplateData Overview where
   templateFile = "overview.html.mustache"
 
 instance ToMustache Overview where
-  toMustache (Overview username tasks) = object
+  toMustache (Overview username tasks) = Mustache.object
     [ "username" ~> toMustache username
-    , "sharedTasks" ~> (toMustache $ map (\task -> object ["text" ~> task]) tasks)
+    , "sharedTasks" ~> toMustache (map (\task -> Mustache.object ["text" ~> task]) tasks)
     ]
 
 
@@ -120,7 +123,8 @@ setup = do
     , configTemplateCache = templateCache
     }
 
-{-@ ignore main @-}
+
+{- ignore main @-}
 main :: IO ()
 main = runSqlite ":memory:" $ do
   cfg <- setup
@@ -131,41 +135,27 @@ main = runSqlite ":memory:" $ do
       appState cfg
 
     dispatch $ do
-      get "/" home
+      get "/" (undefined :: TaggedT (Controller Config TIO) ())
       fallback $ respond notFound
 
-{-@ home :: TaggedT<{\_ -> False}, {\_ -> True}> _ _ @-}
-home :: TaggedT (Controller Config TIO) ()
-home = mapTaggedT (reading getBackend) $ do
-  aliceId <- getAliceId
-
-  alice <- fromJust <$> selectFirst (userIdField ==. aliceId ?: nilFL)
-  assertCurrentUser alice
-
-  aliceUsername <- project userNameField alice
-
+{-@ home :: TaggedT<{\_ -> True}, {\_ -> False}> (ReaderT SqlBackend (AuthenticatedT (Controller Config TIO))) [{v:Entity TodoItem | shared (todoItemOwner (entityVal v)) (entityKey currentUser)}] @-}
+home :: TaggedT (ReaderT SqlBackend (AuthenticatedT (Controller Config TIO))) [Entity TodoItem]
+home = do
+  alice <- getLoggedInUserTagged
+  aliceId <- project userIdField alice
   shares <- selectList (shareToField ==. aliceId ?: nilFL)
   sharedFromUsers <- projectList shareFromField shares
-  sharedTodoItems <- selectList (todoItemOwnerField <-. sharedFromUsers ?: nilFL)
+  selectList (todoItemOwnerField <-. sharedFromUsers ?: nilFL)
+
+{-@ home' :: TaggedT<{\_ -> False}, {\_ -> True}> (ReaderT SqlBackend (AuthenticatedT (Controller Config TIO))) () @-}
+home' :: TaggedT (ReaderT SqlBackend (AuthenticatedT (Controller Config TIO))) ()
+home' = do
+  sharedTodoItems <- home
   sharedTasks <- projectList todoItemTaskField sharedTodoItems
 
   page <- renderTemplate Overview
-    { overviewUsername = aliceUsername
+    { overviewUsername = "Alice"
     , overviewSharedTasks = sharedTasks
     }
 
   respondTagged . okHtml . ByteString.fromStrict . Text.encodeUtf8 $ page
-
--- {-@ displayTasks @-}
--- displayTasks :: UserId -> TaggedT (Controller Config TIO) ()
--- displayTasks userId = mapTaggedT (reading getBackend) $ do
---   user <- fromJust <$> selectFirst (userIdField ==. userId ?: nilFL)
---   assertCurrentUser user
-
---   todoItems <- selectList (todoItemOwnerField ==. userId)
---   tasks <- projectList todoItemTaskField todoItems
-
---   respondTagged . okHtml . ByteString.fromStrict . Text.encodeUtf8 <$> renderTemplate $ Overview
---     { overviewUsername =
---     ,
---     }

@@ -16,6 +16,8 @@ dependencies:
 - bytestring
 - mustache
 - unordered-containers
+- base64-bytestring
+- either
 
 executable:
   source-dirs: src
