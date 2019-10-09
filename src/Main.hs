@@ -124,7 +124,7 @@ setup = do
     }
 
 
-{- ignore main @-}
+{-@ ignore main @-}
 main :: IO ()
 main = runSqlite ":memory:" $ do
   cfg <- setup
@@ -135,26 +135,21 @@ main = runSqlite ":memory:" $ do
       appState cfg
 
     dispatch $ do
-      get "/" (undefined :: TaggedT (Controller Config TIO) ())
+      get "/" home
       fallback $ respond notFound
 
-{-@ home :: TaggedT<{\_ -> True}, {\_ -> False}> (ReaderT SqlBackend (AuthenticatedT (Controller Config TIO))) [{v:Entity TodoItem | shared (todoItemOwner (entityVal v)) (entityKey currentUser)}] @-}
-home :: TaggedT (ReaderT SqlBackend (AuthenticatedT (Controller Config TIO))) [Entity TodoItem]
-home = do
-  alice <- getLoggedInUserTagged
-  aliceId <- project userIdField alice
-  shares <- selectList (shareToField ==. aliceId ?: nilFL)
+{-@ home :: TaggedT<{\_ -> False}, {\_ -> True}> _ () @-}
+home :: TaggedT (AuthenticatedT (Controller Config TIO)) ()
+home = mapTaggedT (reading getBackend) $ do
+  loggedInUser <- getLoggedInUserTagged
+  loggedInUserId <- project userIdField loggedInUser
+  loggedInUserName <- project userNameField loggedInUser
+  shares <- selectList (shareToField ==. loggedInUserId ?: nilFL)
   sharedFromUsers <- projectList shareFromField shares
-  selectList (todoItemOwnerField <-. sharedFromUsers ?: nilFL)
-
-{-@ home' :: TaggedT<{\_ -> False}, {\_ -> True}> (ReaderT SqlBackend (AuthenticatedT (Controller Config TIO))) () @-}
-home' :: TaggedT (ReaderT SqlBackend (AuthenticatedT (Controller Config TIO))) ()
-home' = do
-  sharedTodoItems <- home
+  sharedTodoItems <- selectList (todoItemOwnerField <-. sharedFromUsers ?: nilFL)
   sharedTasks <- projectList todoItemTaskField sharedTodoItems
-
   page <- renderTemplate Overview
-    { overviewUsername = "Alice"
+    { overviewUsername = loggedInUserName
     , overviewSharedTasks = sharedTasks
     }
 

@@ -43,13 +43,16 @@ selectFirst filters = do
 
 {-@ ignore project @-}
 {-@
-assume project :: forall <r1 :: Entity record -> Bool, r2 :: typ -> Bool, policy :: Entity record -> Entity User -> Bool, p :: Entity User -> Bool, selector :: Entity record -> typ -> Bool, inverseselector :: typ -> Entity record -> Bool>.
-  { row :: (Entity <r1> record) |- {v:(Entity <p> User) | True} <: {v:(Entity <policy row> User) | True} }
-  { row :: (Entity <r1> record) |- typ<selector row> <: typ<r2> }
-  { row :: (Entity <r1> record) |- typ<r2> <: typ<selector row>}
-  EntityFieldWrapper<policy, selector, inverseselector> record typ ->
-  row: Entity <r1> record ->
-  TaggedT<p, {\_ -> False}> _ (typ<selector row>)
+assume project :: forall <policy :: Entity record -> Entity User -> Bool,
+                          selector :: Entity record -> typ -> Bool,
+                          flippedselector :: typ -> Entity record -> Bool,
+                          r :: Entity record -> Bool,
+                          label :: Entity User -> Bool>.
+  {row :: (Entity<r> record) |- {v:(Entity <label> User) | True} <: {v:(Entity<policy row> User) | True}}
+  {row :: (Entity<r> record) |- {v:(Entity<policy row> User) | True} <: {v:(Entity <label> User) | True}}
+  EntityFieldWrapper<policy, selector, flippedselector> record typ ->
+  row:(Entity<r> record) ->
+  TaggedT<label, {\_ -> False}> _ (typ<selector row>)
 @-}
 project :: (PersistEntity record, Applicative m) => EntityFieldWrapper record typ -> Entity record -> TaggedT m typ
 project (EntityFieldWrapper entityField) = pure . getConst . Persist.fieldLens entityField Const

@@ -32,11 +32,9 @@ import Core
 -- flipped.
 
 {-@
-data EntityFieldWrapper record typ <
-    policy :: Entity record -> Entity User -> Bool
-  , selector :: Entity record -> typ -> Bool
-  , flippedselector :: typ -> Entity record -> Bool
-  > = EntityFieldWrapper _
+data EntityFieldWrapper record typ <policy :: Entity record -> Entity User -> Bool,
+                                    selector :: Entity record -> typ -> Bool,
+                                    flippedselector :: typ -> Entity record -> Bool> = EntityFieldWrapper _
 @-}
 data EntityFieldWrapper record typ = EntityFieldWrapper (Persist.EntityField record typ)
 {-@ data variance EntityFieldWrapper covariant covariant contravariant invariant invariant @-}
@@ -57,13 +55,13 @@ data EntityFieldWrapper record typ = EntityFieldWrapper (Persist.EntityField rec
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 User
   name Text
-  ssn Text
+  ssn Text !policy="entityKey viewer == entityKey row"
 
 TodoItem
   owner UserId
-  task Text
+  task Text !policy="shared (todoItemOwner (entityVal row)) (entityKey viewer)"
 
-Share
+Share !invariant={v:Share | shared (shareFrom v) (shareTo v)}
   from UserId
   to UserId
 |]
@@ -76,11 +74,11 @@ data User = User
   }
 @-}
 
-{-@ userIdField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == entityKey row}, {\field row -> field == entityKey row}> _ _ @-}
-userIdField :: EntityFieldWrapper User (Key User)
+{-@ assume userIdField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == entityKey row}, {\field row -> field == entityKey row}> User UserId @-}
+userIdField :: EntityFieldWrapper User UserId
 userIdField = EntityFieldWrapper UserId
 
-{-@ userNameField :: EntityFieldWrapper <{\row viewer -> entityKey viewer == entityKey row}, {\row field -> field == userName (entityVal row)}, {\field row -> field == userName (entityVal row)}> _ _ @-}
+{-@ assume userNameField :: EntityFieldWrapper <{\row viewer -> entityKey viewer == entityKey row}, {\row field -> field == userName (entityVal row)}, {\field row -> field == userName (entityVal row)}> _ _ @-}
 userNameField :: EntityFieldWrapper User Text
 userNameField = EntityFieldWrapper UserName
 
@@ -96,11 +94,11 @@ data TodoItem = TodoItem
   }
 @-}
 
-{-@ todoItemIdField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == entityKey row}, {\field row -> field == entityKey row}> _ _ @-}
+{-@ assume todoItemIdField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == entityKey row}, {\field row -> field == entityKey row}> _ _ @-}
 todoItemIdField :: EntityFieldWrapper TodoItem (Key TodoItem)
 todoItemIdField = EntityFieldWrapper TodoItemId
 
-{-@ todoItemOwnerField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == todoItemOwner (entityVal row)}, {\field row -> field == todoItemOwner (entityVal row)}> _ _ @-}
+{-@ assume todoItemOwnerField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == todoItemOwner (entityVal row)}, {\field row -> field == todoItemOwner (entityVal row)}> _ _ @-}
 todoItemOwnerField :: EntityFieldWrapper TodoItem (Key User)
 todoItemOwnerField = EntityFieldWrapper TodoItemOwner
 

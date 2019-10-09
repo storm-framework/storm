@@ -30,10 +30,9 @@ type Tagged a = TaggedT Identity a
 liftTaggedT :: Monad m => m a -> TaggedT m a
 liftTaggedT = TaggedT
 
--- {-@ ignore mapTaggedT @-}
--- {-@
---   assume mapTaggedT :: forall <label :: Entity User -> Bool, clear :: Entity User -> Bool, postcondition :: a -> b -> Bool>.
--- (m a -> n <postcondition a b) -> TaggedT<label, clear> m a -> TaggedT<label, clear> n b  @-}
+{-@
+assume mapTaggedT :: forall <label :: Entity User -> Bool, clear :: Entity User -> Bool>. _ -> TaggedT<label, clear> _ _ -> TaggedT<label, clear> _ _
+@-}
 mapTaggedT :: (m a -> n b) -> TaggedT m a -> TaggedT n b
 mapTaggedT f = TaggedT . f . unTag
 
@@ -75,6 +74,7 @@ instance Applicative m => Applicative (TaggedT m) where
 {-@
 instance Monad m => Monad (TaggedT m) where
   >>= :: forall <p :: Entity User -> Bool, q :: Entity User -> Bool, r :: Entity User -> Bool, s :: Entity User -> Bool, t :: Entity User -> Bool, u :: Entity User -> Bool, rx :: a -> Bool, rf :: a -> b -> Bool, ro :: b -> Bool>.
+    {content :: a<rx> |- b<rf content> <: b<ro>}
     {content :: a<rx> |- b<ro> <: b<rf content>}
     {{v : (Entity<s> User) | True} <: {v : (Entity<p> User) | True}}
     {{v : (Entity<t> User) | True} <: {v : (Entity<p> User) | True}}
