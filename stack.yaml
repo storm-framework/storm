@@ -9,7 +9,5 @@ packages:
   # - persistent-template
 
 extra-deps:
-- github: rosekunkel/lio
-  commit: f14a17ec9861313364465646af8f5eaea0a23285
-  subdirs:
-  - lio-http-server
+- github: rosekunkel/frankie
+  commit: 377b64cfae4525546018673f0a4c95b6b44b0326
