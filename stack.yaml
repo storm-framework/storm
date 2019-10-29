@@ -10,6 +10,6 @@ packages:
 
 extra-deps:
 - github: rosekunkel/lio
-  commit: c6be0171770db90811401c227cb5fb1a1f701cfa
+  commit: f14a17ec9861313364465646af8f5eaea0a23285
   subdirs:
   - lio-http-server

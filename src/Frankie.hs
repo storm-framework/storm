@@ -5,6 +5,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 module Frankie (MonadController(..), AuthenticatedT(..), MonadAuthenticated(..), HasSqlBackend(..), reading, respondTagged, assertCurrentUser, getLoggedInUserTagged, module LIO.HTTP.Server.Frankie) where
 
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), withReaderT)
@@ -72,7 +73,7 @@ instance MonadController s w m => MonadController s w (ReaderT r m) where
 
 instance (Typeable s, Typeable m, Typeable a, RequestHandler (m a) s w) => RequestHandler (TaggedT m a) s w where
   handlerToController args = handlerToController args . unTag
-  reqHandlerArgTy = reqHandlerArgTy . unTag
+  reqHandlerArgTy = reqHandlerArgTy @(m a)
 
 data AuthenticatedT m a = AuthenticatedT { runAuthenticatedT :: Entity User -> m a }
 
@@ -128,7 +129,7 @@ backend = getSqlBackend <$> getAppState
 
 instance forall m w a config. (MonadTIO w, Typeable m, Typeable a, RequestHandler (m a) config w, MonadTIO m, WebMonad w, HasSqlBackend config) => RequestHandler (AuthenticatedT m a) config w where
   handlerToController = handlerToControllerAuthenticatedT
-  reqHandlerArgTy _ = reqHandlerArgTy (undefined :: m a) -- TODO: Fix this bad thing
+  reqHandlerArgTy = reqHandlerArgTy @(m a)
 
 {-@ ignore handlerToControllerAuthenticatedT @-}
 handlerToControllerAuthenticatedT :: (MonadTIO w, Typeable m, Typeable a, RequestHandler (m a) config w, MonadTIO m, WebMonad w, HasSqlBackend config) => [PathSegment] -> AuthenticatedT m a -> Controller config w ()
