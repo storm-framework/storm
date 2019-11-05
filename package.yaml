@@ -1,5 +1,5 @@
-name: binah-basic
-version: "0.0.0"
+name: binah
+version: "0.0.1"
 
 dependencies:
 - base
@@ -10,7 +10,6 @@ dependencies:
 - mtl
 - aeson
 - text
-- lio-http-server
 - wai
 - warp
 - bytestring
@@ -18,6 +17,7 @@ dependencies:
 - unordered-containers
 - base64-bytestring
 - either
+- frankie
 
 executable:
   source-dirs: src

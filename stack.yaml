@@ -9,5 +9,5 @@ packages:
   # - persistent-template
 
 extra-deps:
-- github: rosekunkel/frankie
-  commit: 377b64cfae4525546018673f0a4c95b6b44b0326
+- github: PLSysSec/frankie
+  commit: 571f8e13d9167ff8f98eb52dcbe6416001dec913

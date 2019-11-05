@@ -6,7 +6,8 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
-module Frankie (MonadController(..), AuthenticatedT(..), MonadAuthenticated(..), HasSqlBackend(..), reading, respondTagged, assertCurrentUser, getLoggedInUserTagged, module LIO.HTTP.Server.Frankie) where
+{-# LANGUAGE PackageImports #-}
+module Frankie (MonadController(..), AuthenticatedT(..), MonadAuthenticated(..), HasSqlBackend(..), reading, respondTagged, assertCurrentUser, getLoggedInUserTagged, module BaseFrankie) where
 
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), withReaderT)
 import Data.Typeable (Typeable)
@@ -28,7 +29,7 @@ import Data.Maybe (fromJust)
 
 import Prelude hiding (log)
 
-import LIO.HTTP.Server.Frankie
+import "frankie" Frankie as BaseFrankie
 
 import Core
 import Model
