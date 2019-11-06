@@ -82,4 +82,4 @@ assume printTo :: user:_ -> _ -> TaggedT<{\_ -> True}, {\viewer -> viewer == use
 @-}
 printTo :: MonadTIO m => Entity User -> String -> TaggedT m ()
 printTo user str = liftTIO . TIO . putStrLn . mconcat $
-  ["[", Text.unpack . userName . entityVal $ user, "] ", str]
+  ["[", Text.unpack . userName . Persist.entityVal $ user, "] ", str]

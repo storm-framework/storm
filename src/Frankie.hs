@@ -139,8 +139,11 @@ handlerToControllerAuthenticatedT args handler = do
        case authHeader >>= parseBasicAuthHeader of
          Just (username, _) -> do
            back <- backend
-           user <- (`runReaderT` back) $ unTag $ selectFirst (userNameField ==. username ?: nilFL)
-           handlerToController args (runAuthenticatedT handler (fromJust user))
+           maybeUser <- (`runReaderT` back) $ unTag $ selectFirst (userNameField ==. username ?: nilFL)
+           user <- case maybeUser of
+             Just user -> return user
+             Nothing -> respond $ requireBasicAuth "this website"
+           handlerToController args (runAuthenticatedT handler user)
          Nothing -> respond $ requireBasicAuth "this website"
 
 

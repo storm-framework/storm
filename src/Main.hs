@@ -34,6 +34,7 @@ import Infrastructure
 import Filters
 import Actions
 import Frankie
+import Templates
 
 -- * Client code
 
@@ -47,33 +48,8 @@ data Config = Config
 instance HasSqlBackend Config where
   getSqlBackend = configBackend
 
-class ToMustache d => TemplateData d where
-  templateFile :: FilePath
-
-{-@ ignore getOrLoadTemplate @-}
-getOrLoadTemplate :: (MonadController Config w m, MonadTIO m) => [FilePath] -> FilePath -> m Mustache.Template
-getOrLoadTemplate searchDirs file = do
-  cacheMVar <- configTemplateCache <$> getAppState
-  oldCache <- liftTIO $ TIO (readMVar cacheMVar)
-  case HashMap.lookup file oldCache of
-    Just template -> pure template
-    Nothing -> do
-      liftTIO $ TIO $ Mustache.compileTemplateWithCache searchDirs oldCache file >>= \case
-        Right template ->
-          let updatedCache = HashMap.insert (Mustache.name template) template (Mustache.partials template) in do
-            modifyMVar_ cacheMVar (\currentCache -> evaluate $ currentCache <> updatedCache)
-            pure template
-        Left err -> error $ "Error parsing template " ++ file ++ ": " ++ show err
-
-{-@ assume renderTemplate :: _ -> TaggedT<{\_ -> True}, {\_ -> False}> _ _ @-}
-{-@ ignore renderTemplate @-}
-renderTemplate :: forall d w m. (MonadController Config w m, MonadTIO m, TemplateData d) => d -> TaggedT m Text
-renderTemplate templateData = do
-  template <- getOrLoadTemplate searchDirs file
-  pure $ Mustache.substitute template templateData
-  where
-    file = templateFile @d
-    searchDirs = ["templates"]
+instance HasTemplateCache Config where
+  getTemplateCache = configTemplateCache
 
 data Overview = Overview
   { overviewUsername :: Text

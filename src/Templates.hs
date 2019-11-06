@@ -1,0 +1,78 @@
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ScopedTypeVariables, TypeApplications, AllowAmbiguousTypes #-}
+
+module Templates
+  ( TemplateData(..)
+  , HasTemplateCache(..)
+  , renderTemplate
+  )
+where
+
+import           Frankie
+import qualified Text.Mustache.Types           as Mustache
+import qualified Data.HashMap.Strict           as HashMap
+import qualified Text.Mustache                 as Mustache
+import           Data.Text                      ( Text )
+import           Control.Concurrent.MVar        ( MVar
+                                                , readMVar
+                                                , modifyMVar_
+                                                )
+import           Control.Exception              ( evaluate )
+
+import           Infrastructure
+import           Filters
+
+class Mustache.ToMustache d => TemplateData d where
+  templateFile :: FilePath
+
+class HasTemplateCache config where
+  getTemplateCache :: config -> MVar Mustache.TemplateCache
+
+{-@ ignore getOrLoadTemplate @-}
+getOrLoadTemplate
+  :: (MonadController config w m, MonadTIO m, HasTemplateCache config)
+  => [FilePath]
+  -> FilePath
+  -> m Mustache.Template
+getOrLoadTemplate searchDirs file = do
+  cacheMVar <- getTemplateCache <$> getAppState
+  oldCache  <- liftTIO $ TIO (readMVar cacheMVar)
+  case HashMap.lookup file oldCache of
+    Just template -> pure template
+    Nothing ->
+      liftTIO
+        $   TIO
+        $   Mustache.compileTemplateWithCache searchDirs oldCache file
+        >>= \case
+              Right template ->
+                let updatedCache = HashMap.insert
+                      (Mustache.name template)
+                      template
+                      (Mustache.partials template)
+                in  do
+                      modifyMVar_
+                        cacheMVar
+                        (\currentCache ->
+                          evaluate $ currentCache <> updatedCache
+                        )
+                      pure template
+              Left err ->
+                error $ "Error parsing template " ++ file ++ ": " ++ show err
+
+{-@ assume renderTemplate :: _ -> TaggedT<{\_ -> True}, {\_ -> False}> _ _ @-}
+{-@ ignore renderTemplate @-}
+renderTemplate
+  :: forall d w m config
+   . ( MonadController config w m
+     , MonadTIO m
+     , TemplateData d
+     , HasTemplateCache config
+     )
+  => d
+  -> TaggedT m Text
+renderTemplate templateData = do
+  template <- getOrLoadTemplate searchDirs file
+  pure $ Mustache.substitute template templateData
+ where
+  file       = templateFile @d
+  searchDirs = ["templates"]
