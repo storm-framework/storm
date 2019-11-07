@@ -97,6 +97,13 @@ instance Monad m => Monad (TaggedT m) where
 instance Monad m => Monad (TaggedT m) where
   x >>= f = TaggedT $ unTag x >>= (unTag . f)
 
+-- For some reason LH ends up with `addC: malformed constraint:` if `return` is used in the TaggedT monad.
+-- Defining a function with the same signature solves the problem.
+{-@ ignore returnTagged @-}
+{-@ assume returnTagged:: a -> TaggedT<{\_ -> True}, {\_ -> False}> _ _ @-}
+returnTagged :: Monad m => a -> TaggedT m a
+returnTagged = return
+
 -- ** MonadTIO
 
 instance MonadTIO TIO where
