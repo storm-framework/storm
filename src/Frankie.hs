@@ -5,9 +5,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE PackageImports #-}
-module Frankie (MonadController(..), AuthenticatedT(..), MonadAuthenticated(..), HasSqlBackend(..), reading, respondTagged, assertCurrentUser, getLoggedInUserTagged, module BaseFrankie) where
+module Frankie (MonadController(..), HasSqlBackend(..), reading, backend, respondTagged, requireAuthUser, httpAuthDb, module BaseFrankie) where
 
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), withReaderT)
 import Data.Typeable (Typeable)
@@ -30,6 +29,8 @@ import Data.Maybe (fromJust)
 import Prelude hiding (log)
 
 import "frankie" Frankie as BaseFrankie
+import Frankie.Config
+import Frankie.Auth
 
 import Core
 import Model
@@ -42,123 +43,49 @@ reading r m = r >>= runReaderT m
 
 {-@ measure currentUser :: Entity User @-}
 
-{-@ ignore assertCurrentUser @-}
-{-@ assume assertCurrentUser :: u:_ -> {v:TaggedT<{\_ -> True}, {\_ -> False}> _ _ | u == currentUser} @-}
-assertCurrentUser :: Monad m => Entity User -> TaggedT m ()
-assertCurrentUser _ = return ()
-
 -- TODO: Fill this out
 {-
 instance MonadController s w m => MonadController s w (TaggedT m) where
   respond :: Response -> TaggedT<{\_ -> True}, {\u -> u == currentUser}> m a
 @-}
-instance MonadController s w m => MonadController s w (TaggedT m) where
+instance MonadController w m => MonadController w (TaggedT m) where
   request = lift request
   respond = respondTagged
-  getAppState = lift getAppState
-  putAppState = lift . putAppState
-  log ll str = lift $ log ll str
   liftWeb = lift . liftWeb
 
 {-@ assume respondTagged :: _ -> TaggedT<{\_ -> True}, {\u -> u == currentUser}> _ _ @-}
-respondTagged :: MonadController s w m => Response -> TaggedT m a
+respondTagged :: MonadController w m => Response -> TaggedT m a
 respondTagged = lift . respond
 
-instance MonadController s w m => MonadController s w (ReaderT r m) where
+{-@ assume requireAuthUser :: m {u:(Entity User) | u == currentUser} @-}
+requireAuthUser :: MonadAuth (Entity User) m => m (Entity User)
+requireAuthUser = requireAuth
+
+instance MonadConfig config m => MonadConfig config (TaggedT m) where
+  getConfig = lift getConfig
+
+instance MonadController w m => MonadController w (ReaderT r m) where
   request = lift request
   respond = lift . respond
-  getAppState = lift getAppState
-  putAppState = lift . putAppState
-  log ll str = lift $ log ll str
   liftWeb = lift . liftWeb
 
-instance (Typeable s, Typeable m, Typeable a, RequestHandler (m a) s w) => RequestHandler (TaggedT m a) s w where
-  handlerToController args = handlerToController args . unTag
-  reqHandlerArgTy = reqHandlerArgTy @(m a)
+instance MonadConfig config m => MonadConfig config (ReaderT r m) where
+  getConfig = lift getConfig
 
-data AuthenticatedT m a = AuthenticatedT { runAuthenticatedT :: Entity User -> m a }
-
-instance Functor m => Functor (AuthenticatedT m) where
-  fmap f x = AuthenticatedT (fmap f . runAuthenticatedT x)
-
-instance Applicative m => Applicative (AuthenticatedT m) where
-  pure x = AuthenticatedT $ const (pure x)
-  f <*> x = AuthenticatedT $ \user -> runAuthenticatedT f user <*> runAuthenticatedT x user
-
-instance Monad m => Monad (AuthenticatedT m) where
-  x >>= f = AuthenticatedT $ \user -> runAuthenticatedT x user >>= (`runAuthenticatedT` user) . f
-
-class Monad m => MonadAuthenticated m where
-  getLoggedInUser :: m (Entity User)
-
-instance Monad m => MonadAuthenticated (AuthenticatedT m) where
-  getLoggedInUser = AuthenticatedT pure
-
-{-
-instance MonadAuthenticated m => MonadAuthenticated (TaggedT m) where
-  getLoggedInUser :: TaggedT<{\_ -> True}, {\_ -> False}> m {u:(Entity User) | u == currentUser}
-@-}
-instance MonadAuthenticated m => MonadAuthenticated (TaggedT m) where
-  getLoggedInUser = getLoggedInUserTagged
-
-{-@ assume getLoggedInUserTagged :: TaggedT<{\_ -> True}, {\_ -> False}> _ {u:(Entity User) | u == currentUser && entityKey u == entityKey currentUser && entityVal u == entityVal currentUser} @-}
-getLoggedInUserTagged :: MonadAuthenticated m => TaggedT m (Entity User)
-getLoggedInUserTagged = lift getLoggedInUser
-
-instance MonadAuthenticated m => MonadAuthenticated (ReaderT r m) where
-  getLoggedInUser = lift getLoggedInUser
-
-instance MonadTrans AuthenticatedT where
-  lift x = AuthenticatedT $ const x
-
-instance MonadTIO m => MonadTIO (AuthenticatedT m) where
+instance MonadTIO m => MonadTIO (ConfigT config m) where
   liftTIO = lift . liftTIO
-
-instance MonadController s w m => MonadController s w (AuthenticatedT m) where
-  request = lift request
-  respond = lift . respond
-  getAppState = lift getAppState
-  putAppState = lift . putAppState
-  log ll str = lift $ log ll str
-  liftWeb = lift . liftWeb
 
 class HasSqlBackend config where
   getSqlBackend :: config -> Persist.SqlBackend
 
-backend :: (MonadController config w m, HasSqlBackend config) => m Persist.SqlBackend
-backend = getSqlBackend <$> getAppState
+backend :: (MonadConfig config m, HasSqlBackend config) => m Persist.SqlBackend
+backend = getSqlBackend <$> getConfig
 
-instance forall m w a config. (MonadTIO w, Typeable m, Typeable a, RequestHandler (m a) config w, MonadTIO m, WebMonad w, HasSqlBackend config) => RequestHandler (AuthenticatedT m a) config w where
-  handlerToController = handlerToControllerAuthenticatedT
-  reqHandlerArgTy = reqHandlerArgTy @(m a)
-
-{-@ ignore handlerToControllerAuthenticatedT @-}
-handlerToControllerAuthenticatedT :: (MonadTIO w, Typeable m, Typeable a, RequestHandler (m a) config w, MonadTIO m, WebMonad w, HasSqlBackend config) => [PathSegment] -> AuthenticatedT m a -> Controller config w ()
-handlerToControllerAuthenticatedT args handler = do
-       authHeader <- requestHeader hAuthorization
-       case authHeader >>= parseBasicAuthHeader of
-         Just (username, _) -> do
-           back <- backend
-           maybeUser <- (`runReaderT` back) $ unTag $ selectFirst (userNameField ==. username ?: nilFL)
-           user <- case maybeUser of
-             Just user -> return user
-             Nothing -> respond $ requireBasicAuth "this website"
-           handlerToController args (runAuthenticatedT handler user)
-         Nothing -> respond $ requireBasicAuth "this website"
-
-
-parseBasicAuthHeader :: ByteString -> Maybe (Text, Text)
-parseBasicAuthHeader =
-  ByteString.stripPrefix "Basic " >=>
-  rightToMaybe . Base64.decode >=>
-  rightToMaybe . Text.decodeUtf8' >=>
-  splitAtChar ':'
-  where
-    splitAtChar :: Char -> Text -> Maybe (Text, Text)
-    splitAtChar c text =
-      let (before, after) = Text.break (== c) text in do
-      (_, after') <- Text.uncons after
-      return (before, after')
+{-@ ignore httpAuthDb @-}
+{-@ assume httpAuthDb :: AuthMethod {v:(Entity User) | v == currentUser} (TaggedT<{\_ -> True}, {\_ -> False}> m)@-}
+httpAuthDb :: (MonadController w m, MonadConfig config m, HasSqlBackend config, MonadTIO m) => AuthMethod (Entity User) (TaggedT m)
+httpAuthDb = httpBasicAuth $ \username _password ->
+  mapTaggedT (reading backend) $ selectFirst (userNameField ==. username ?: nilFL)
 
 instance WebMonad TIO where
   data Request TIO = RequestTIO { unRequestTIO :: Wai.Request }
@@ -174,10 +101,10 @@ instance WebMonad TIO where
                         r -> return r
   server port hostPref app =
     let settings = Wai.setHost hostPref $ Wai.setPort port $
-                   Wai.setServerName "lio-http-server" $ Wai.defaultSettings
+                   Wai.setServerName "frankie" $ Wai.defaultSettings
     in Wai.runSettings settings $ toWaiApplication app
 
-instance MonadTIO m => MonadTIO (Controller s m) where
+instance MonadTIO m => MonadTIO (ControllerT m) where
   liftTIO = lift . liftTIO
 
 toWaiApplication :: Application TIO -> Wai.Application

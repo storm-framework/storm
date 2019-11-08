@@ -27,6 +27,8 @@ import Text.Mustache ((~>), ToMustache(..))
 import qualified Text.Mustache.Types as Mustache
 import Control.Concurrent.MVar
 import qualified Data.HashMap.Strict as HashMap
+import Frankie.Config
+import Frankie.Auth
 
 import Core
 import Model
@@ -43,6 +45,7 @@ data Config = Config
   , configAliceId :: !UserId
   , configBobId :: !UserId
   , configTemplateCache :: !(MVar Mustache.TemplateCache)
+  , configAuthMethod :: !(AuthMethod (Entity User) Controller)
   }
 
 instance HasSqlBackend Config where
@@ -50,6 +53,9 @@ instance HasSqlBackend Config where
 
 instance HasTemplateCache Config where
   getTemplateCache = configTemplateCache
+
+instance HasAuthMethod (Entity User) Controller Config where
+  getAuthMethod = configAuthMethod
 
 data Overview = Overview
   { overviewUsername :: Text
@@ -66,14 +72,14 @@ instance ToMustache Overview where
     ]
 
 
-getBackend :: MonadController Config w m => m SqlBackend
-getBackend = configBackend <$> getAppState
+getBackend :: MonadConfig Config m => m SqlBackend
+getBackend = configBackend <$> getConfig
 
-getAliceId :: MonadController Config w m => m UserId
-getAliceId = configAliceId <$> getAppState
+getAliceId :: MonadConfig Config m => m UserId
+getAliceId = configAliceId <$> getConfig
 
-getBobId :: MonadController Config w m => m UserId
-getBobId = configBobId <$> getAppState
+getBobId :: MonadConfig Config m => m UserId
+getBobId = configBobId <$> getConfig
 
 setup :: MonadIO m => ReaderT SqlBackend m Config
 setup = do
@@ -97,8 +103,10 @@ setup = do
     , configAliceId = aliceId
     , configBobId = bobId
     , configTemplateCache = templateCache
+    , configAuthMethod = httpAuthDb
     }
 
+type Controller = TaggedT (ReaderT SqlBackend (ConfigT Config (ControllerT TIO)))
 
 {-@ ignore main @-}
 main :: IO ()
@@ -108,16 +116,16 @@ main = runSqlite ":memory:" $ do
     mode "dev" $ do
       host "localhost"
       port 3000
-      appState cfg
+      initWith $ configure cfg . reading backend . unTag
 
     dispatch $ do
-      get "/" home
+      get "/" (undefined :: Controller ()) --home
       fallback $ respond notFound
 
-{-@ home :: TaggedT<{\_ -> False}, {\_ -> True}> _ () @-}
-home :: TaggedT (AuthenticatedT (Controller Config TIO)) ()
-home = mapTaggedT (reading getBackend) $ do
-  loggedInUser <- getLoggedInUserTagged
+{-@ home :: TaggedT<{\_ -> False}, {\_ -> True}> _ _ @-}
+home :: Controller (Entity User)
+home = do
+  loggedInUser <- requireAuthUser
   loggedInUserId <- project userIdField loggedInUser
   loggedInUserName <- project userNameField loggedInUser
   shares <- selectList (shareToField ==. loggedInUserId ?: nilFL)

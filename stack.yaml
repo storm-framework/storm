@@ -10,4 +10,4 @@ packages:
 
 extra-deps:
 - github: PLSysSec/frankie
-  commit: 571f8e13d9167ff8f98eb52dcbe6416001dec913
+  commit: 8894b528847a9f3bdef7ec47e905fc81081c2940

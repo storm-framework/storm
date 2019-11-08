@@ -9,6 +9,7 @@ module Templates
 where
 
 import           Frankie
+import Frankie.Config
 import qualified Text.Mustache.Types           as Mustache
 import qualified Data.HashMap.Strict           as HashMap
 import qualified Text.Mustache                 as Mustache
@@ -30,12 +31,12 @@ class HasTemplateCache config where
 
 {-@ ignore getOrLoadTemplate @-}
 getOrLoadTemplate
-  :: (MonadController config w m, MonadTIO m, HasTemplateCache config)
+  :: (MonadConfig config m, MonadTIO m, HasTemplateCache config)
   => [FilePath]
   -> FilePath
   -> m Mustache.Template
 getOrLoadTemplate searchDirs file = do
-  cacheMVar <- getTemplateCache <$> getAppState
+  cacheMVar <- getTemplateCache <$> getConfig
   oldCache  <- liftTIO $ TIO (readMVar cacheMVar)
   case HashMap.lookup file oldCache of
     Just template -> pure template
@@ -63,8 +64,9 @@ getOrLoadTemplate searchDirs file = do
 {-@ ignore renderTemplate @-}
 renderTemplate
   :: forall d w m config
-   . ( MonadController config w m
+   . ( MonadController w m
      , MonadTIO m
+     , MonadConfig config m
      , TemplateData d
      , HasTemplateCache config
      )
