@@ -85,7 +85,7 @@ backend = getSqlBackend <$> getConfig
 {-@ assume httpAuthDb :: AuthMethod {v:(Entity User) | v == currentUser} (TaggedT<{\_ -> True}, {\_ -> False}> m)@-}
 httpAuthDb :: (MonadController w m, MonadConfig config m, HasSqlBackend config, MonadTIO m) => AuthMethod (Entity User) (TaggedT m)
 httpAuthDb = httpBasicAuth $ \username _password ->
-  mapTaggedT (reading backend) $ selectFirst (userNameField ==. username ?: nilFL)
+  mapTaggedT (reading backend) $ selectFirst (userNameField ==. username)
 
 instance WebMonad TIO where
   data Request TIO = RequestTIO { unRequestTIO :: Wai.Request }
