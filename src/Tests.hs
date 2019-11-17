@@ -193,7 +193,7 @@ id1 = undefined
 -- printSharedTasksBad user1 user2 = do
 --   shares <- selectList (shareToField ==. entityKey user1)
 --   sharedFromUsers <- projectList shareFromField shares
---   sharedTodoItems <- selectList (todoItemOwnerField <-. sharedFromUsersL)
+--   sharedTodoItems <- selectList (todoItemOwnerField <-. sharedFromUsers)
 --   tasks <- projectList todoItemTaskField sharedTodoItems -- bad
 --   printTo user2 $ show tasks -- bad
 
