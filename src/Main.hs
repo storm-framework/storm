@@ -128,9 +128,9 @@ home = do
   loggedInUser <- requireAuthUser
   loggedInUserId <- project userIdField loggedInUser
   loggedInUserName <- project userNameField loggedInUser
-  shares <- selectList (shareToField ==. loggedInUserId ?: nilFL)
+  shares <- selectList (shareToField ==. loggedInUserId)
   sharedFromUsers <- projectList shareFromField shares
-  sharedTodoItems <- selectList (todoItemOwnerField <-. sharedFromUsers ?: nilFL)
+  sharedTodoItems <- selectList (todoItemOwnerField <-. sharedFromUsers)
   sharedTasks <- projectList todoItemTaskField sharedTodoItems
   page <- renderTemplate Overview
     { overviewUsername = loggedInUserName

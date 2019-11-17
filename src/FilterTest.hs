@@ -9,18 +9,18 @@ import Filters
 userId :: UserId
 userId = undefined
 
-{-@ test1Good :: FilterList<{\_ -> True}, {\_ -> True}> _ @-}
-test1Good :: FilterList User
-test1Good = nilFL -- good
+{-@ test1Good :: Filter<{\_ _ -> True}, {\_ -> True}> _ @-}
+test1Good :: Filter User
+test1Good = trueF -- good
 
-{-@ test1Bad :: FilterList<{\_ -> True}, {\_ -> False}> _ @-}
-test1Bad :: FilterList User
-test1Bad = nilFL -- bad
+{-@ test1Bad :: Filter<{\_ _ -> True}, {\_ -> False}> _ @-}
+test1Bad :: Filter User
+test1Bad = trueF -- bad
 
-{-@ test2Good :: FilterList<{\_ -> }, {\_ -> True}> _ @-}
-test2Good :: FilterList User
-test2Good = userIdField ==. userId ?: nilFL -- good
+{-@ test2Good :: Filter<{\_ _ -> True}, {\_ -> True}> _ @-}
+test2Good :: Filter User
+test2Good = userIdField ==. userId -- good
 
-{-@ test2Bad :: FilterList<{\_ -> True}, {\_ -> True}> _ @-}
-test2Bad :: FilterList User
-test2Bad = userIdField ==. userId ?: nilFL -- bad
+{-@ test2Bad :: Filter<{\_ _ -> True}, {\_ -> True}> _ @-}
+test2Bad :: Filter User
+test2Bad = userIdField ==. userId -- bad
