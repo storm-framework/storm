@@ -1,8 +1,8 @@
 module FilterTest where
 
-import Core
+import Binah.Core
+import Binah.Filters
 import Model
-import Filters
 
 {-@ measure userId :: UserId @-}
 {-@ userId :: {v:_ | v == userId} @-}

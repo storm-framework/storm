@@ -19,7 +19,7 @@ import Database.Persist.TH (share, mkMigrate, mkPersist, sqlSettings, persistLow
 import Data.Text (Text)
 import qualified Data.Text as Text
 
-import Core
+import Binah.Core
 
 -- We need this wrapper because Liquid Haskell just has no idea what to do with
 -- GADT data families like EntityField. Hiding it inside a plain data type makes

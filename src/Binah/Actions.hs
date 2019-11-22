@@ -2,7 +2,7 @@
 
 {-# LANGUAGE GADTs #-}
 
-module Actions where
+module Binah.Actions where
 
 import Data.Functor.Const (Const(..))
 import Control.Monad.Reader (MonadReader(..), runReaderT)
@@ -11,10 +11,10 @@ import qualified Database.Persist as Persist
 import qualified Data.Text as Text
 import Data.Text (Text)
 
-import Core
+import Binah.Core
+import Binah.Infrastructure
+import Binah.Filters
 import Model
-import Infrastructure
-import Filters
 
 
 {-@ ignore selectList @-}

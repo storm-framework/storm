@@ -2,14 +2,14 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module Infrastructure where
+module Binah.Infrastructure where
 
 import Control.Monad.Trans.Class (MonadTrans(..))
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Reader (MonadReader(..), ReaderT(..))
 import Data.Functor.Identity (Identity)
 
-import Core
+import Binah.Core
 import Model
 
 -- * Definitions
