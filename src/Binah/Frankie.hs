@@ -6,7 +6,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE PackageImports #-}
-module Frankie (MonadController(..), HasSqlBackend(..), reading, backend, respondTagged, requireAuthUser, httpAuthDb, module BaseFrankie) where
+module Binah.Frankie (MonadController(..), HasSqlBackend(..), reading, backend, respondTagged, requireAuthUser, httpAuthDb, module Frankie) where
 
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), withReaderT)
 import Data.Typeable (Typeable)
@@ -28,15 +28,16 @@ import Data.Maybe (fromJust)
 
 import Prelude hiding (log)
 
-import "frankie" Frankie as BaseFrankie
+import Frankie
 import Frankie.Config
 import Frankie.Auth
 
-import Core
+import Binah.Core
+import Binah.Infrastructure
+import Binah.Filters
+import Binah.Actions
+
 import Model
-import Infrastructure
-import Filters
-import Actions
 
 reading :: Monad m => m r -> ReaderT r m a -> m a
 reading r m = r >>= runReaderT m
@@ -85,7 +86,7 @@ backend = getSqlBackend <$> getConfig
 {-@ assume httpAuthDb :: AuthMethod {v:(Entity User) | v == currentUser} (TaggedT<{\_ -> True}, {\_ -> False}> m)@-}
 httpAuthDb :: (MonadController w m, MonadConfig config m, HasSqlBackend config, MonadTIO m) => AuthMethod (Entity User) (TaggedT m)
 httpAuthDb = httpBasicAuth $ \username _password ->
-  mapTaggedT (reading backend) $ selectFirst (userNameField ==. username)
+  mapTaggedT (reading backend) $ selectFirst (EntityFieldWrapper UserName ==. username)
 
 instance WebMonad TIO where
   data Request TIO = RequestTIO { unRequestTIO :: Wai.Request }

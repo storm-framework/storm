@@ -30,13 +30,13 @@ import qualified Data.HashMap.Strict as HashMap
 import Frankie.Config
 import Frankie.Auth
 
-import Core
+import Binah.Core
+import Binah.Infrastructure
+import Binah.Filters
+import Binah.Actions
+import Binah.Frankie
+import Binah.Templates
 import Model
-import Infrastructure
-import Filters
-import Actions
-import Frankie
-import Templates
 
 -- * Client code
 

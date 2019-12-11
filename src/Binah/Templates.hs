@@ -1,15 +1,14 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables, TypeApplications, AllowAmbiguousTypes #-}
 
-module Templates
+module Binah.Templates
   ( TemplateData(..)
   , HasTemplateCache(..)
   , renderTemplate
   )
 where
 
-import           Frankie
-import Frankie.Config
+import           Frankie.Config
 import qualified Text.Mustache.Types           as Mustache
 import qualified Data.HashMap.Strict           as HashMap
 import qualified Text.Mustache                 as Mustache
@@ -20,8 +19,9 @@ import           Control.Concurrent.MVar        ( MVar
                                                 )
 import           Control.Exception              ( evaluate )
 
-import           Infrastructure
-import           Filters
+import           Binah.Infrastructure
+import           Binah.Filters
+import           Binah.Frankie
 
 class Mustache.ToMustache d => TemplateData d where
   templateFile :: FilePath

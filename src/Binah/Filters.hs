@@ -1,11 +1,11 @@
 -- | Combinators and data types for Persistent-style filters.
 
-module Filters where
+module Binah.Filters where
 
 import Database.Persist (PersistField)
 import qualified Database.Persist as Persist
 
-import Core
+import Binah.Core
 import Model
 
 -- * Data types
@@ -67,7 +67,7 @@ forall < r  :: Entity record -> Bool
 -- * Combinators
 
 {-@
-(Filters.==.) ::
+(==.) ::
 forall < policy :: Entity record -> Entity User -> Bool
        , selector :: Entity record -> typ -> Bool
        , inverseselector :: typ -> Entity record -> Bool
@@ -84,7 +84,7 @@ forall < policy :: Entity record -> Entity User -> Bool
 (EntityFieldWrapper field) ==. value = Filter [field Persist.==. value]
 
 {-@
-(Filters.!=.) ::
+(!=.) ::
 forall < policy :: Entity record -> Entity User -> Bool
        , selector :: Entity record -> typ -> Bool
        , inverseselector :: typ -> Entity record -> Bool
@@ -101,7 +101,7 @@ forall < policy :: Entity record -> Entity User -> Bool
 (EntityFieldWrapper field) !=. value = Filter [field Persist.!=. value]
 
 {-@
-(Filters.<-.) ::
+(<-.) ::
 forall < policy :: Entity record -> Entity User -> Bool
        , selector :: Entity record -> typ -> Bool
        , inverseselector :: typ -> Entity record -> Bool

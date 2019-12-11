@@ -8,12 +8,11 @@ import Control.Monad.Reader (ReaderT)
 import Database.Persist.Sql (SqlBackend)
 import Data.Text (Text)
 
-import Core
+import Binah.Core
+import Binah.Infrastructure
+import Binah.Filters
+import Binah.Actions
 import Model
-import Infrastructure
-import Filters
-import Actions
-
 
 -- | Projection test
 {-@ projectUserId :: user:(Entity User) -> TaggedT<{\_ -> True}, {\_ -> False}> Identity {v:UserId | v == entityKey user}  @-}
