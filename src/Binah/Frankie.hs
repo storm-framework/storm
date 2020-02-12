@@ -58,8 +58,8 @@ instance MonadController w m => MonadController w (TaggedT m) where
 respondTagged :: MonadController w m => Response -> TaggedT m a
 respondTagged = lift . respond
 
-{-@ assume requireAuthUser :: m {u:(Entity User) | u == currentUser} @-}
-requireAuthUser :: MonadAuth (Entity User) m => m (Entity User)
+{-@ assume requireAuthUser :: TaggedT<{\_ -> True}, {\_ -> False}> m {u:(Entity User) | u == currentUser} @-}
+requireAuthUser :: MonadAuth (Entity User) (TaggedT m) => TaggedT m (Entity User)
 requireAuthUser = requireAuth
 
 instance MonadConfig config m => MonadConfig config (TaggedT m) where

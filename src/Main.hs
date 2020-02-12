@@ -36,6 +36,7 @@ import Binah.Filters
 import Binah.Actions
 import Binah.Frankie
 import Binah.Templates
+import Binah.Updates
 import Model
 
 -- * Client code
@@ -123,7 +124,7 @@ main = runSqlite ":memory:" $ do
       fallback $ respond notFound
 
 {-@ home :: TaggedT<{\_ -> False}, {\_ -> True}> _ _ @-}
-home :: Controller (Entity User)
+home :: Controller ()
 home = do
   loggedInUser <- requireAuthUser
   loggedInUserId <- project userIdField loggedInUser
@@ -138,3 +139,19 @@ home = do
     }
 
   respondTagged . okHtml . ByteString.fromStrict . Text.encodeUtf8 $ page
+
+{-@ updateSsn :: TaggedT<{\_ -> True}, {\_ -> True}> _ _ @-}
+updateSsn :: Controller ()
+updateSsn = do
+  loggedInUser <- requireAuthUser
+  loggedInUserId <- project userIdField loggedInUser
+  update loggedInUserId up
+
+{-@ measure newSsn :: Text @-}
+{-@ assume newSsn :: {v:_ | v == newSsn} @-}
+newSsn :: Text
+newSsn = "123456789"
+
+{-@ up :: Update<{\_ -> True}, {\v -> userName (entityVal v) == newSsn }> User @-}
+up :: Update User
+up = userNameField =. newSsn

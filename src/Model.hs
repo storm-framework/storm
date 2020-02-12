@@ -78,7 +78,7 @@ data User = User
 userIdField :: EntityFieldWrapper User UserId
 userIdField = EntityFieldWrapper UserId
 
-{-@ assume userNameField :: EntityFieldWrapper <{\row viewer -> entityKey viewer == entityKey row}, {\row field -> field == userName (entityVal row)}, {\field row -> field == userName (entityVal row)}> _ _ @-}
+{-@ assume userNameField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == userName (entityVal row)}, {\field row -> field == userName (entityVal row)}> _ _ @-}
 userNameField :: EntityFieldWrapper User Text
 userNameField = EntityFieldWrapper UserName
 
