@@ -41,8 +41,7 @@ assume assign :: forall <policy :: Entity record -> Entity User -> Bool,
                        r :: typ -> Bool,
                        update :: Entity record -> Bool,
                        fieldref :: typ -> Bool>.
-  { row :: (Entity record), value :: typ<r> |- {field:(typ<selector row>) | field == value} <: typ<fieldref> }
-  { field :: typ<fieldref> |- {v:(Entity <flippedselector field> record) | True} <: {v:(Entity <update> record) | True} }
+  { row :: (Entity record), value :: typ<r>, field :: {field:(typ<selector row>) | field == value} |- {v:(Entity <flippedselector field> record) | True} <: {v:(Entity <update> record) | True} }
   EntityFieldWrapper<policy, selector, flippedselector> record typ -> typ<r> -> Update<policy, update> record
 @-}
 assign :: PersistField typ => EntityFieldWrapper record typ -> typ -> Update record
