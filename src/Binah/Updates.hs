@@ -30,6 +30,25 @@ assume (=.) :: forall <policy :: Entity record -> Entity User -> Bool,
 (=.) :: PersistField typ => EntityFieldWrapper record typ -> typ -> Update record
 (EntityFieldWrapper field) =. val = Update [field Persist.=. val]
 
+
+
+-- Same as `=.` but the type is exported!
+{-@ ignore assign @-}
+{-@
+assume assign :: forall <policy :: Entity record -> Entity User -> Bool,
+                       selector :: Entity record -> typ -> Bool,
+                       flippedselector :: typ -> Entity record -> Bool,
+                       r :: typ -> Bool,
+                       update :: Entity record -> Bool,
+                       fieldref :: typ -> Bool>.
+  { row :: (Entity record), value :: typ<r> |- {field:(typ<selector row>) | field == value} <: typ<fieldref> }
+  { field :: typ<fieldref> |- {v:(Entity <flippedselector field> record) | True} <: {v:(Entity <update> record) | True} }
+  EntityFieldWrapper<policy, selector, flippedselector> record typ -> typ<r> -> Update<policy, update> record
+@-}
+assign :: PersistField typ => EntityFieldWrapper record typ -> typ -> Update record
+assign (EntityFieldWrapper field) val = Update [field Persist.=. val]
+
+
 -- TODO: It's probably important to make sure multiple updates to the same field don't happen at once
 {-@
 instance Semigroup (Update record) where

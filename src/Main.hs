@@ -145,7 +145,7 @@ updateSsn :: Controller ()
 updateSsn = do
   loggedInUser <- requireAuthUser
   loggedInUserId <- project userIdField loggedInUser
-  update loggedInUserId up
+  update loggedInUserId (userNameField `assign` newSsn)
 
 {-@ measure newSsn :: Text @-}
 {-@ assume newSsn :: {v:_ | v == newSsn} @-}
@@ -154,4 +154,5 @@ newSsn = "123456789"
 
 {-@ up :: Update<{\_ -> True}, {\v -> userName (entityVal v) == newSsn }> User @-}
 up :: Update User
-up = userNameField =. newSsn
+up = userNameField `assign` newSsn
+
