@@ -5,7 +5,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module Binah.Frankie (MonadController(..), HasSqlBackend(..), reading, backend, respondTagged, requireAuthUser, httpBasicAuth, module Frankie) where
+module Binah.Frankie (MonadController(..), HasSqlBackend(..), reading, backend, respondTagged, requireAuthUser, module Frankie) where
 
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), withReaderT)
 import Data.Typeable (Typeable)
@@ -29,7 +29,7 @@ import Prelude hiding (log)
 
 import Frankie
 import Frankie.Config
-import Frankie.Auth hiding (httpBasicAuth)
+import Frankie.Auth
 import qualified Frankie.Auth
 
 import Binah.Core
@@ -81,13 +81,6 @@ class HasSqlBackend config where
 
 backend :: (MonadConfig config m, HasSqlBackend config) => m Persist.SqlBackend
 backend = getSqlBackend <$> getConfig
-
-{-@ assume httpBasicAuth
-    :: (Username -> Password -> TaggedT<{\_ -> False}, {\_ -> False}> m (Maybe (Entity User)))
-    -> AuthMethod (Entity User) (TaggedT m)
-@-}
-httpBasicAuth :: MonadController w m => (Username -> Password -> (TaggedT m) (Maybe (Entity User))) -> AuthMethod (Entity User) (TaggedT m)
-httpBasicAuth = Frankie.Auth.httpBasicAuth
 
 instance WebMonad TIO where
   data Request TIO = RequestTIO { unRequestTIO :: Wai.Request }

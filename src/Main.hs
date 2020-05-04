@@ -28,7 +28,7 @@ import qualified Text.Mustache.Types as Mustache
 import Control.Concurrent.MVar
 import qualified Data.HashMap.Strict as HashMap
 import Frankie.Config
-import Frankie.Auth hiding (httpBasicAuth)
+import Frankie.Auth
 
 import Binah.Core
 import Binah.Infrastructure
@@ -106,6 +106,7 @@ setup = do
     , configAuthMethod = httpAuthDb
     }
 
+{-@ ignore httpAuthDb @-}
 httpAuthDb :: AuthMethod (Entity User) Controller
 httpAuthDb = httpBasicAuth $ \username _password -> selectFirst (userNameField ==. username)
 
