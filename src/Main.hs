@@ -110,7 +110,7 @@ setup = do
 httpAuthDb :: AuthMethod (Entity User) Controller
 httpAuthDb = httpBasicAuth $ \username _password -> selectFirst (userNameField ==. username)
 
-type Controller = TaggedT (ReaderT SqlBackend (ConfigT Config (ControllerT TIO)))
+type Controller = TaggedT (Entity User) (ReaderT SqlBackend (ConfigT Config (ControllerT TIO)))
 
 {-@ ignore main @-}
 main :: IO ()
@@ -126,7 +126,7 @@ main = runSqlite ":memory:" $ do
       get "/" (undefined :: Controller ()) --home
       fallback $ respond notFound
 
-{-@ home :: TaggedT<{\_ -> False}, {\_ -> True}> _ _ @-}
+{-@ home :: TaggedT<{\_ -> False}, {\_ -> True}> _ _ _ @-}
 home :: Controller (Entity User)
 home = do
   loggedInUser <- requireAuthUser
@@ -142,3 +142,5 @@ home = do
     }
 
   respondTagged . okHtml . ByteString.fromStrict . Text.encodeUtf8 $ page
+  
+-- {-@ ipa :: TaggedT<{\_ -> False}, {\_ -> True}> _ _ _ @-}

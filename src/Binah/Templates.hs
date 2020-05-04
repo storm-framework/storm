@@ -19,8 +19,8 @@ import           Control.Concurrent.MVar        ( MVar
                                                 )
 import           Control.Exception              ( evaluate )
 
+import           Binah.Core
 import           Binah.Infrastructure
-import           Binah.Filters
 import           Binah.Frankie
 
 class Mustache.ToMustache d => TemplateData d where
@@ -60,10 +60,10 @@ getOrLoadTemplate searchDirs file = do
               Left err ->
                 error $ "Error parsing template " ++ file ++ ": " ++ show err
 
-{-@ assume renderTemplate :: _ -> TaggedT<{\_ -> True}, {\_ -> False}> _ _ @-}
+{-@ assume renderTemplate :: _ -> TaggedT<{\_ -> True}, {\_ -> False}> user _ _ @-}
 {-@ ignore renderTemplate @-}
 renderTemplate
-  :: forall d w m config
+  :: forall user d w m config
    . ( MonadController w m
      , MonadTIO m
      , MonadConfig config m
@@ -71,7 +71,7 @@ renderTemplate
      , HasTemplateCache config
      )
   => d
-  -> TaggedT m Text
+  -> TaggedT user m Text
 renderTemplate templateData = do
   template <- getOrLoadTemplate searchDirs file
   pure $ Mustache.substitute template templateData

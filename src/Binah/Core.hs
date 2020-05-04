@@ -1,8 +1,8 @@
 -- | Functionality that needs to be loaded before checking the Models file.
 
-module Binah.Core ( Entity ) where
+module Binah.Core ( Entity, EntityFieldWrapper(..), Key ) where
 
-import Database.Persist (Entity, Key)
+import Database.Persist (Entity, Key, EntityField)
 
 -- TODO: This entity stuff is morally just refinements on existing functions
 -- from Persist, it would be nice to move this to a spec file.
@@ -15,3 +15,12 @@ import Database.Persist (Entity, Key)
 {-@ measure entityKey :: Entity record -> Key record @-}
 
 {-@ measure entityVal :: Entity record -> record @-}
+
+{-@
+data EntityFieldWrapper user record typ < policy :: Entity record -> user -> Bool
+                                        , selector :: Entity record -> typ -> Bool
+                                        , flippedselector :: typ -> Entity record -> Bool
+                                        > = EntityFieldWrapper _
+@-}
+data EntityFieldWrapper user record typ = EntityFieldWrapper (EntityField record typ)
+{-@ data variance EntityFieldWrapper covariant covariant contravariant invariant invariant @-}

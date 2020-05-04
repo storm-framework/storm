@@ -31,14 +31,6 @@ import Binah.Core
 -- represents. These absrefs should be the same, just with their arguments
 -- flipped.
 
-{-@
-data EntityFieldWrapper record typ <policy :: Entity record -> Entity User -> Bool,
-                                    selector :: Entity record -> typ -> Bool,
-                                    flippedselector :: typ -> Entity record -> Bool> = EntityFieldWrapper _
-@-}
-data EntityFieldWrapper record typ = EntityFieldWrapper (Persist.EntityField record typ)
-{-@ data variance EntityFieldWrapper covariant covariant contravariant invariant invariant @-}
-
 
 -- * Model
 
@@ -74,16 +66,16 @@ data User = User
   }
 @-}
 
-{-@ assume userIdField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == entityKey row}, {\field row -> field == entityKey row}> User UserId @-}
-userIdField :: EntityFieldWrapper User UserId
+{-@ assume userIdField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == entityKey row}, {\field row -> field == entityKey row}> (Entity User) User UserId @-}
+userIdField :: EntityFieldWrapper (Entity User) User UserId
 userIdField = EntityFieldWrapper UserId
 
-{-@ assume userNameField :: EntityFieldWrapper <{\row viewer -> entityKey viewer == entityKey row}, {\row field -> field == userName (entityVal row)}, {\field row -> field == userName (entityVal row)}> _ _ @-}
-userNameField :: EntityFieldWrapper User Text
+{-@ assume userNameField :: EntityFieldWrapper <{\row viewer -> entityKey viewer == entityKey row}, {\row field -> field == userName (entityVal row)}, {\field row -> field == userName (entityVal row)}> (Entity User) _ _ @-}
+userNameField :: EntityFieldWrapper (Entity User) User Text
 userNameField = EntityFieldWrapper UserName
 
-{-@ assume userSsnField :: EntityFieldWrapper <{\row viewer -> entityKey viewer == entityKey row}, {\row field -> field == userSsn (entityVal row)}, {\field row -> field == userSsn (entityVal row)}> _ {v:_ | tlen v == 9} @-}
-userSsnField :: EntityFieldWrapper User Text
+{-@ assume userSsnField :: EntityFieldWrapper <{\row viewer -> entityKey viewer == entityKey row}, {\row field -> field == userSsn (entityVal row)}, {\field row -> field == userSsn (entityVal row)}> (Entity User) _ {v:_ | tlen v == 9} @-}
+userSsnField :: EntityFieldWrapper (Entity User) User Text
 userSsnField = EntityFieldWrapper UserSsn
 
 -- * TodoItem
@@ -94,16 +86,16 @@ data TodoItem = TodoItem
   }
 @-}
 
-{-@ assume todoItemIdField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == entityKey row}, {\field row -> field == entityKey row}> _ _ @-}
-todoItemIdField :: EntityFieldWrapper TodoItem (Key TodoItem)
+{-@ assume todoItemIdField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == entityKey row}, {\field row -> field == entityKey row}> (Entity User) _ _ @-}
+todoItemIdField :: EntityFieldWrapper (Entity User) TodoItem (Key TodoItem)
 todoItemIdField = EntityFieldWrapper TodoItemId
 
-{-@ assume todoItemOwnerField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == todoItemOwner (entityVal row)}, {\field row -> field == todoItemOwner (entityVal row)}> _ _ @-}
-todoItemOwnerField :: EntityFieldWrapper TodoItem (Key User)
+{-@ assume todoItemOwnerField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == todoItemOwner (entityVal row)}, {\field row -> field == todoItemOwner (entityVal row)}> (Entity User) _ _ @-}
+todoItemOwnerField :: EntityFieldWrapper (Entity User) TodoItem (Key User)
 todoItemOwnerField = EntityFieldWrapper TodoItemOwner
 
-{-@ assume todoItemTaskField :: EntityFieldWrapper <{\row viewer -> shared (todoItemOwner (entityVal row)) (entityKey viewer)}, {\row field -> field == todoItemTask (entityVal row)}, {\field row -> field == todoItemTask (entityVal row)}> _ {v:_ | tlen v > 0} @-}
-todoItemTaskField :: EntityFieldWrapper TodoItem Text
+{-@ assume todoItemTaskField :: EntityFieldWrapper <{\row viewer -> shared (todoItemOwner (entityVal row)) (entityKey viewer)}, {\row field -> field == todoItemTask (entityVal row)}, {\field row -> field == todoItemTask (entityVal row)}> (Entity User) _ {v:_ | tlen v > 0} @-}
+todoItemTaskField :: EntityFieldWrapper (Entity User) TodoItem Text
 todoItemTaskField = EntityFieldWrapper TodoItemTask
 
 -- * Share
@@ -125,14 +117,14 @@ data Share = Share
 {-@ measure shared :: Key User -> Key User -> Bool @-}
 {-@ invariant {v:Share | shared (shareFrom v) (shareTo v)} @-}
 
-{-@ assume shareIdField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == entityKey row}, {\field row -> field == entityKey row}> _ _ @-}
-shareIdField :: EntityFieldWrapper Share (Key Share)
+{-@ assume shareIdField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == entityKey row}, {\field row -> field == entityKey row}> (Entity User) _ _ @-}
+shareIdField :: EntityFieldWrapper (Entity User) Share (Key Share)
 shareIdField = EntityFieldWrapper ShareId
 
-{-@ assume shareFromField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == shareFrom (entityVal row)}, {\field row -> field == shareFrom (entityVal row)}> _ _ @-}
-shareFromField :: EntityFieldWrapper Share (Key User)
+{-@ assume shareFromField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == shareFrom (entityVal row)}, {\field row -> field == shareFrom (entityVal row)}> (Entity User) _ _ @-}
+shareFromField :: EntityFieldWrapper (Entity User) Share (Key User)
 shareFromField = EntityFieldWrapper ShareFrom
 
-{-@ assume shareToField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == shareTo (entityVal row)}, {\field row -> field == shareTo (entityVal row)}> _ _ @-}
-shareToField :: EntityFieldWrapper Share (Key User)
+{-@ assume shareToField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == shareTo (entityVal row)}, {\field row -> field == shareTo (entityVal row)}> (Entity User) _ _ @-}
+shareToField :: EntityFieldWrapper (Entity User) Share (Key User)
 shareToField = EntityFieldWrapper ShareTo

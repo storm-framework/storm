@@ -15,16 +15,16 @@ import Binah.Actions
 import Model
 
 -- | Projection test
-{-@ projectUserId :: user:(Entity User) -> TaggedT<{\_ -> True}, {\_ -> False}> Identity {v:UserId | v == entityKey user}  @-}
-projectUserId :: Entity User -> TaggedT Identity UserId
+{-@ projectUserId :: user:(Entity User) -> TaggedT<{\_ -> True}, {\_ -> False}> _ Identity {v:UserId | v == entityKey user}  @-}
+projectUserId :: Entity User -> TaggedT (Entity User) Identity UserId
 projectUserId = project userIdField
 
-{-@ projectUserName :: user:{Entity User | entityKey user == id1} -> TaggedT<{\viewer -> entityKey viewer == id1}, {\_ -> False}> Identity {v:Text | v == userName (entityVal user)}  @-}
-projectUserName :: Entity User -> TaggedT Identity Text
+{-@ projectUserName :: user:{Entity User | entityKey user == id1} -> TaggedT<{\viewer -> entityKey viewer == id1}, {\_ -> False}> _ Identity {v:Text | v == userName (entityVal user)}  @-}
+projectUserName :: Entity User -> TaggedT (Entity User) Identity Text
 projectUserName = project userNameField
 
-{-@ projectUserSsn :: user:{Entity User | entityKey user == id1} -> TaggedT<{\viewer -> entityKey viewer == id1}, {\_ -> False}> Identity {v:Text | v == userSsn (entityVal user) && tlen v == 9}  @-}
-projectUserSsn :: Entity User -> TaggedT Identity Text
+{-@ projectUserSsn :: user:{Entity User | entityKey user == id1} -> TaggedT<{\viewer -> entityKey viewer == id1}, {\_ -> False}> _ Identity {v:Text | v == userSsn (entityVal user) && tlen v == 9}  @-}
+projectUserSsn :: Entity User -> TaggedT (Entity User) Identity Text
 projectUserSsn = project userSsnField
 
 {-@ measure Tests.id1 :: UserId @-}
@@ -77,7 +77,7 @@ id1 = undefined
 -- exampleSelectList3 = selectList (userNameField ==. "alice")
 
 -- -- {-@ projectSelect1 :: [{v:_ | userFriend (entityVal v) == id1}] -> TaggedT<{\_ -> False}, {\_ -> False}> Identity [{v:_ | len v == 9}] @-}
--- -- projectSelect1 :: [Entity User] -> TaggedT Identity [String]
+-- -- projectSelect1 :: [Entity User] -> TaggedT (Entity User) Identity [String]
 -- -- projectSelect1 users = projectList userSSNField users
 
 -- -- -- | This is fine: user 1 can see both the filtered rows and the name field in

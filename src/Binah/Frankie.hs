@@ -34,35 +34,32 @@ import qualified Frankie.Auth
 
 import Binah.Core
 import Binah.Infrastructure
-import Binah.Filters
-import Binah.Actions
 
-import Model
 
 reading :: Monad m => m r -> ReaderT r m a -> m a
 reading r m = r >>= runReaderT m
 
-{-@ measure currentUser :: Entity User @-}
+{-@ measure currentUser :: user @-}
 
 -- TODO: Fill this out
 {-
-instance MonadController s w m => MonadController s w (TaggedT m) where
-  respond :: Response -> TaggedT<{\_ -> True}, {\u -> u == currentUser}> m a
+instance MonadController s w m => MonadController s w (TaggedT user m) where
+  respond :: Response -> TaggedT<{\_ -> True}, {\u -> u == currentUser}> user m a
 @-}
-instance MonadController w m => MonadController w (TaggedT m) where
+instance MonadController w m => MonadController w (TaggedT user m) where
   request = lift request
   respond = respondTagged
   liftWeb x = lift (liftWeb x)
 
-{-@ assume respondTagged :: _ -> TaggedT<{\_ -> True}, {\u -> u == currentUser}> _ _ @-}
-respondTagged :: MonadController w m => Response -> TaggedT m a
+{-@ assume respondTagged :: _ -> TaggedT<{\_ -> True}, {\u -> u == currentUser}> _ _ _ @-}
+respondTagged :: MonadController w m => Response -> TaggedT user m a
 respondTagged x = lift (respond x)
 
-{-@ assume requireAuthUser :: m {u:(Entity User) | u == currentUser} @-}
-requireAuthUser :: MonadAuth (Entity User) m => m (Entity User)
+{-@ assume requireAuthUser :: m {u:user | u == currentUser} @-}
+requireAuthUser :: MonadAuth user m => m user
 requireAuthUser = requireAuth
 
-instance MonadConfig config m => MonadConfig config (TaggedT m) where
+instance MonadConfig config m => MonadConfig config (TaggedT user m) where
   getConfig = lift getConfig
 
 instance MonadController w m => MonadController w (ReaderT r m) where
