@@ -126,21 +126,32 @@ main = runSqlite ":memory:" $ do
       get "/" (undefined :: Controller ()) --home
       fallback $ respond notFound
 
+{-@ measure currentUser :: Entity User @-}
+
+{-@ ignore respondTagged @-}
+{-@ assume respondTagged :: _ -> TaggedT<{\_ -> True}, {\u -> u == currentUser}> _ _ _ @-}
+respondTagged :: MonadController w m => Response -> TaggedT (Entity User) m a
+respondTagged x = lift (respond x)
+
+{-@ ignore requireAuthUser @-}
+{-@ assume requireAuthUser :: m {u:(Entity User)| u == currentUser} @-}
+requireAuthUser :: MonadAuth (Entity User) m => m (Entity User)
+requireAuthUser = undefined
+
 {-@ home :: TaggedT<{\_ -> False}, {\_ -> True}> _ _ _ @-}
 home :: Controller (Entity User)
 home = do
   loggedInUser <- requireAuthUser
-  loggedInUserId <- project userIdField loggedInUser
+  -- loggedInUserId <- project userIdField loggedInUser
   loggedInUserName <- project userNameField loggedInUser
-  shares <- selectList (shareToField ==. loggedInUserId)
-  sharedFromUsers <- projectList shareFromField shares
-  sharedTodoItems <- selectList (todoItemOwnerField <-. sharedFromUsers)
-  sharedTasks <- projectList todoItemTaskField sharedTodoItems
-  page <- renderTemplate Overview
-    { overviewUsername = loggedInUserName
-    , overviewSharedTasks = sharedTasks
-    }
+  -- shares <- selectList (shareToField ==. loggedInUserId)
+  -- sharedFromUsers <- projectList shareFromField shares
+  -- sharedTodoItems <- selectList (todoItemOwnerField <-. sharedFromUsers)
+  -- sharedTasks <- projectList todoItemTaskField sharedTodoItems
+  -- page <- renderTemplate Overview
+  --   { overviewUsername = loggedInUserName
+  --   , overviewSharedTasks = sharedTasks
+  --   }
 
-  respondTagged . okHtml . ByteString.fromStrict . Text.encodeUtf8 $ page
-  
--- {-@ ipa :: TaggedT<{\_ -> False}, {\_ -> True}> _ _ _ @-}
+  -- respondTagged . okHtml . ByteString.fromStrict . Text.encodeUtf8 $ page
+  respondTagged forbidden

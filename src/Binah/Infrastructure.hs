@@ -114,7 +114,7 @@ instance MonadTIO IO where
 instance MonadTIO m => MonadTIO (ReaderT r m) where
   liftTIO x = lift (liftTIO x)
 
-instance MonadTIO IO m => MonadTIO (TaggedT user m) where
+instance MonadTIO m => MonadTIO (TaggedT user m) where
   liftTIO x = lift (liftTIO x)
 
 -- Monad Transformers

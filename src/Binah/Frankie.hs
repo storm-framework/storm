@@ -5,7 +5,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module Binah.Frankie (MonadController(..), HasSqlBackend(..), reading, backend, respondTagged, requireAuthUser, module Frankie) where
+module Binah.Frankie (MonadController(..), HasSqlBackend(..), reading, backend, module Frankie) where
 
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), withReaderT)
 import Data.Typeable (Typeable)
@@ -39,25 +39,25 @@ import Binah.Infrastructure
 reading :: Monad m => m r -> ReaderT r m a -> m a
 reading r m = r >>= runReaderT m
 
-{-@ measure currentUser :: user @-}
+-- {-@ measure currentUser :: forall user. Int -> user @-}
 
 -- TODO: Fill this out
-{-
-instance MonadController s w m => MonadController s w (TaggedT user m) where
-  respond :: Response -> TaggedT<{\_ -> True}, {\u -> u == currentUser}> user m a
-@-}
+-- {-
+-- instance MonadController s w m => MonadController s w (TaggedT user m) where
+--   respond :: Response -> TaggedT<{\_ -> True}, {\u -> u == currentUser 0}> user m a
+-- @-}
 instance MonadController w m => MonadController w (TaggedT user m) where
   request = lift request
-  respond = respondTagged
+  respond x = lift (respond x)
   liftWeb x = lift (liftWeb x)
 
-{-@ assume respondTagged :: _ -> TaggedT<{\_ -> True}, {\u -> u == currentUser}> _ _ _ @-}
-respondTagged :: MonadController w m => Response -> TaggedT user m a
-respondTagged x = lift (respond x)
+-- {-@ assume respondTagged :: _ -> TaggedT<{\_ -> True}, {\u -> u == currentUser 0}> _ _ _ @-}
+-- respondTagged :: MonadController w m => Response -> TaggedT user m a
+-- respondTagged x = lift (respond x)
 
-{-@ assume requireAuthUser :: m {u:user | u == currentUser} @-}
-requireAuthUser :: MonadAuth user m => m user
-requireAuthUser = requireAuth
+-- {-@ assume requireAuthUser :: m {u:user | u == currentUser 0} @-}
+-- requireAuthUser :: MonadAuth user m => m user
+-- requireAuthUser = requireAuth
 
 instance MonadConfig config m => MonadConfig config (TaggedT user m) where
   getConfig = lift getConfig

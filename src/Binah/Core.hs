@@ -23,4 +23,5 @@ data EntityFieldWrapper user record typ < policy :: Entity record -> user -> Boo
                                         > = EntityFieldWrapper _
 @-}
 data EntityFieldWrapper user record typ = EntityFieldWrapper (EntityField record typ)
-{-@ data variance EntityFieldWrapper covariant covariant contravariant invariant invariant @-}
+{-@ data variance EntityFieldWrapper invariant covariant covariant invariant invariant invariant @-}
+-- {-@ data variance EntityFieldWrapper invariant covariant covariant contravariant invariant invariant @-}
