@@ -52,11 +52,11 @@ instance MonadController s w m => MonadController s w (TaggedT m) where
 instance MonadController w m => MonadController w (TaggedT m) where
   request = lift request
   respond = respondTagged
-  liftWeb = lift . liftWeb
+  liftWeb x = lift (liftWeb x)
 
 {-@ assume respondTagged :: _ -> TaggedT<{\_ -> True}, {\u -> u == currentUser}> _ _ @-}
 respondTagged :: MonadController w m => Response -> TaggedT m a
-respondTagged = lift . respond
+respondTagged x = lift (respond x)
 
 {-@ assume requireAuthUser :: m {u:(Entity User) | u == currentUser} @-}
 requireAuthUser :: MonadAuth (Entity User) m => m (Entity User)
@@ -67,14 +67,14 @@ instance MonadConfig config m => MonadConfig config (TaggedT m) where
 
 instance MonadController w m => MonadController w (ReaderT r m) where
   request = lift request
-  respond = lift . respond
-  liftWeb = lift . liftWeb
+  respond x = lift (respond x)
+  liftWeb x = lift (liftWeb x)
 
 instance MonadConfig config m => MonadConfig config (ReaderT r m) where
   getConfig = lift getConfig
 
 instance MonadTIO m => MonadTIO (ConfigT config m) where
-  liftTIO = lift . liftTIO
+  liftTIO x = lift (liftTIO x)
 
 class HasSqlBackend config where
   getSqlBackend :: config -> Persist.SqlBackend
@@ -100,7 +100,7 @@ instance WebMonad TIO where
     in Wai.runSettings settings $ toWaiApplication app
 
 instance MonadTIO m => MonadTIO (ControllerT m) where
-  liftTIO = lift . liftTIO
+  liftTIO x = lift (liftTIO x)
 
 toWaiApplication :: Application TIO -> Wai.Application
 toWaiApplication app wReq wRespond = do
