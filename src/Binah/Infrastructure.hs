@@ -34,7 +34,7 @@ liftTaggedT = TaggedT
 assume mapTaggedT :: forall <label :: Entity User -> Bool, clear :: Entity User -> Bool>. _ -> TaggedT<label, clear> _ _ -> TaggedT<label, clear> _ _
 @-}
 mapTaggedT :: (m a -> n b) -> TaggedT m a -> TaggedT n b
-mapTaggedT f = TaggedT . f . unTag
+mapTaggedT f x = TaggedT (f (unTag x))
 
 -- * Instances
 
@@ -113,10 +113,10 @@ instance MonadTIO IO where
   liftTIO = runTIO
 
 instance MonadTIO m => MonadTIO (ReaderT r m) where
-  liftTIO = lift . liftTIO
+  liftTIO x = lift (liftTIO x)
 
 instance MonadTIO m => MonadTIO (TaggedT m) where
-  liftTIO = lift . liftTIO
+  liftTIO x = lift (liftTIO x)
 
 -- Monad Transformers
 
@@ -126,4 +126,4 @@ instance MonadTrans TaggedT where
 instance MonadReader r m => MonadReader r (TaggedT m) where
   ask = lift ask
   local = mapTaggedT . local
-  reader = lift . reader
+  reader x = lift (reader x)
