@@ -18,7 +18,7 @@ import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Trans (MonadTrans(..))
 import Control.Monad.Reader (MonadReader(..), ReaderT(..), withReaderT)
 import Database.Persist.Sqlite (SqlBackend, Migration, runMigration, runSqlite)
-import Database.Persist (PersistStoreWrite, PersistRecordBackend, insert)
+import Database.Persist (PersistStoreWrite, PersistRecordBackend)
 
 import qualified Data.ByteString.Lazy as ByteString
 import qualified Data.Text.Encoding as Text
@@ -36,14 +36,13 @@ import Binah.Filters
 import Binah.Actions
 import Binah.Frankie
 import Binah.Templates
+import Binah.Insert
 import Model
 
 -- * Client code
 
 data Config = Config
   { configBackend :: !SqlBackend
-  , configAliceId :: !UserId
-  , configBobId :: !UserId
   , configTemplateCache :: !(MVar Mustache.TemplateCache)
   , configAuthMethod :: !(AuthMethod (Entity User) Controller)
   }
@@ -75,40 +74,41 @@ instance ToMustache Overview where
 getBackend :: MonadConfig Config m => m SqlBackend
 getBackend = configBackend <$> getConfig
 
-getAliceId :: MonadConfig Config m => m UserId
-getAliceId = configAliceId <$> getConfig
 
-getBobId :: MonadConfig Config m => m UserId
-getBobId = configBobId <$> getConfig
-
+{-@ ignore setup @-}
 setup :: MonadIO m => ReaderT SqlBackend m Config
 setup = do
   templateCache <- liftIO $ newMVar mempty
 
   runMigration migrateAll
 
-  aliceId <- insert $ User "Alice" "123456789"
-  bobId <- insert $ User "Bob" "987654321"
-
-  insert $ TodoItem bobId "Get groceries"
-  insert $ TodoItem bobId "Submit paper"
-  insert $ TodoItem aliceId "Research"
-
-  insert $ Share bobId aliceId
-
   backend <- ask
+
+  liftIO . runTIO . flip runReaderT backend . unTag $ initDB
 
   return $  Config
     { configBackend = backend
-    , configAliceId = aliceId
-    , configBobId = bobId
     , configTemplateCache = templateCache
     , configAuthMethod = httpAuthDb
     }
 
+{-@ initDB :: TaggedT<{\_ -> True}, {\_-> True}> _ _ @-}
+initDB :: TaggedT (ReaderT SqlBackend TIO) ()
+initDB = do
+  aliceId <- insert $ mkUser "Alice" "123456789"
+  bobId   <- insert $ mkUser "Bob" "987654321"
+
+  insert $ mkTodoItem bobId "Get groceries"
+  insert $ mkTodoItem bobId "Submit paper"
+  insert $ mkTodoItem aliceId "Research"
+
+  insert $ mkShare bobId aliceId
+
+  return ()
+
 {-@ ignore httpAuthDb @-}
 httpAuthDb :: AuthMethod (Entity User) Controller
-httpAuthDb = httpBasicAuth $ \username _password -> selectFirst (userNameField ==. username)
+httpAuthDb = httpBasicAuth $ \username _password -> selectFirst (userName' ==. username)
 
 type Controller = TaggedT (ReaderT SqlBackend (ConfigT Config (ControllerT TIO)))
 
@@ -130,12 +130,12 @@ main = runSqlite ":memory:" $ do
 home :: Controller (Entity User)
 home = do
   loggedInUser <- requireAuthUser
-  loggedInUserId <- project userIdField loggedInUser
-  loggedInUserName <- project userNameField loggedInUser
-  shares <- selectList (shareToField ==. loggedInUserId)
-  sharedFromUsers <- projectList shareFromField shares
-  sharedTodoItems <- selectList (todoItemOwnerField <-. sharedFromUsers)
-  sharedTasks <- projectList todoItemTaskField sharedTodoItems
+  loggedInUserId <- project userId' loggedInUser
+  loggedInUserName <- project userName' loggedInUser
+  shares <- selectList (shareTo' ==. loggedInUserId)
+  sharedFromUsers <- projectList shareFrom' shares
+  sharedTodoItems <- selectList (todoItemOwner' <-. sharedFromUsers)
+  sharedTasks <- projectList todoItemTask' sharedTodoItems
   page <- renderTemplate Overview
     { overviewUsername = loggedInUserName
     , overviewSharedTasks = sharedTasks

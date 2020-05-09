@@ -23,6 +23,8 @@ import           Binah.Infrastructure
 import           Binah.Filters
 import           Binah.Frankie
 
+import           Model
+
 class Mustache.ToMustache d => TemplateData d where
   templateFile :: FilePath
 

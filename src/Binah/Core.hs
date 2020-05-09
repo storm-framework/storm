@@ -1,6 +1,6 @@
 -- | Functionality that needs to be loaded before checking the Models file.
 
-module Binah.Core ( Entity ) where
+module Binah.Core ( Entity, Key ) where
 
 import Database.Persist (Entity, Key)
 
