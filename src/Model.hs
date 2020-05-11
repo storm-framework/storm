@@ -1,138 +1,251 @@
--- | Where we define the model. Pretty much every module has to load this,
--- because various definitions need to know about User -- it would be nice to
--- decouple these.
-
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
 
-module Model where
+{-@ LIQUID "--compile-spec" @-}
 
-import Database.Persist (Key)
-import qualified Database.Persist as Persist
-import Database.Persist.TH (share, mkMigrate, mkPersist, sqlSettings, persistLowerCase)
-import Data.Text (Text)
-import qualified Data.Text as Text
+module Model 
+  ( EntityFieldWrapper(..)
+  , migrateAll
+  , BinahRecord
+  , persistentRecord
+  , mkUser
+  , mkTodoItem
+  , mkShare
+  , User
+  , TodoItem
+  , Share
+  , userId'
+  , userName'
+  , userSsn'
+  , todoItemId'
+  , todoItemOwner'
+  , todoItemTask'
+  , shareId'
+  , shareFrom'
+  , shareTo'
+  , UserId
+  , TodoItemId
+  , ShareId
+  )
 
-import Binah.Core
+where
 
--- We need this wrapper because Liquid Haskell just has no idea what to do with
--- GADT data families like EntityField. Hiding it inside a plain data type makes
--- checking much more stable. Eventually it would be nice to be able to remove
--- this wrapper.
---
--- The `policy` absref specifies who can view a given record. The `selector` and
--- `flippedselector` connects the EntityFieldWrapper to the field selector it
--- represents. These absrefs should be the same, just with their arguments
--- flipped.
+import           Database.Persist               ( Key )
+import           Database.Persist.TH            ( share
+                                                , mkMigrate
+                                                , mkPersist
+                                                , sqlSettings
+                                                , persistLowerCase
+                                                )
+import           Data.Text                      ( Text )
+import qualified Database.Persist              as Persist
 
-{-@
-data EntityFieldWrapper record typ <policy :: Entity record -> Entity User -> Bool,
-                                    selector :: Entity record -> typ -> Bool,
-                                    flippedselector :: typ -> Entity record -> Bool> = EntityFieldWrapper _
-@-}
-data EntityFieldWrapper record typ = EntityFieldWrapper (Persist.EntityField record typ)
-{-@ data variance EntityFieldWrapper covariant covariant contravariant invariant invariant @-}
-
-
--- * Model
-
--- Generate the Persistent data types for the model. We refine some of those
--- data types below. Ideally these two steps would be integrated somehow.
---
--- TODO: We should restrict access to some of the functions in this type class
--- like fieldLens and fromPersistValues.
---
--- TODO: It would be nice if we could check this file without getting errors
--- about e.g. methods which take Void throwing errors. We need to be able to
--- {-@ ignore _ @-} instance methods to do this, I think.
+import           Binah.Core
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 User
   name Text
-  ssn Text !policy="entityKey viewer == entityKey row"
+  ssn Text
 
 TodoItem
   owner UserId
-  task Text !policy="shared (todoItemOwner (entityVal row)) (entityKey viewer)"
+  task Text
 
-Share !invariant={v:Share | shared (shareFrom v) (shareTo v)}
+Share
   from UserId
   to UserId
 |]
 
--- * User
 {-@
-data User = User
-  { userName :: _
-  , userSsn :: {v:_ | tlen v == 9}
-  }
+data EntityFieldWrapper record typ < policy :: Entity record -> Entity User -> Bool
+                                   , selector :: Entity record -> typ -> Bool
+                                   , flippedselector :: typ -> Entity record -> Bool
+                                   > = EntityFieldWrapper _
 @-}
 
-{-@ assume userIdField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == entityKey row}, {\field row -> field == entityKey row}> User UserId @-}
-userIdField :: EntityFieldWrapper User UserId
-userIdField = EntityFieldWrapper UserId
+data EntityFieldWrapper record typ = EntityFieldWrapper (Persist.EntityField record typ)
+{-@ data variance EntityFieldWrapper covariant covariant invariant invariant invariant @-}
 
-{-@ assume userNameField :: EntityFieldWrapper <{\row viewer -> entityKey viewer == entityKey row}, {\row field -> field == userName (entityVal row)}, {\field row -> field == userName (entityVal row)}> _ _ @-}
-userNameField :: EntityFieldWrapper User Text
-userNameField = EntityFieldWrapper UserName
+--------------------------------------------------------------------------------
+-- | Predicates
+--------------------------------------------------------------------------------
 
-{-@ assume userSsnField :: EntityFieldWrapper <{\row viewer -> entityKey viewer == entityKey row}, {\row field -> field == userSsn (entityVal row)}, {\field row -> field == userSsn (entityVal row)}> _ {v:_ | tlen v == 9} @-}
-userSsnField :: EntityFieldWrapper User Text
-userSsnField = EntityFieldWrapper UserSsn
+{-@ measure shared :: UserId -> UserId -> Bool @-}
+
+--------------------------------------------------------------------------------
+-- | Policies
+--------------------------------------------------------------------------------
+
+
+
+--------------------------------------------------------------------------------
+-- | Records
+--------------------------------------------------------------------------------
+
+{-@ data BinahRecord record < 
+    p :: Entity record -> Bool
+  , insertpolicy :: Entity record -> Entity User -> Bool
+  , querypolicy  :: Entity record -> Entity User -> Bool 
+  >
+  = BinahRecord _
+@-}
+data BinahRecord record = BinahRecord record
+{-@ data variance BinahRecord invariant invariant invariant invariant @-}
+
+{-@ persistentRecord :: BinahRecord record -> record @-}
+persistentRecord :: BinahRecord record -> record
+persistentRecord (BinahRecord record) = record
+
+{-@ measure getJust :: Key record -> Entity record @-}
+
+-- * User
+
+{-@ measure userName :: User -> Text @-}
+{-@ measure userSsn :: User -> Text @-}
+
+{-@ mkUser :: 
+     x_0: Text
+  -> x_1: Text
+  -> BinahRecord < 
+       {\row -> userName (entityVal row) == x_0 && userSsn (entityVal row) == x_1}
+     , {\_ _ -> True}
+     , {\row viewer -> (entityKey viewer == entityKey row)}
+     > User
+@-}
+mkUser x_0 x_1 = BinahRecord (User x_0 x_1)
+
+{-@ invariant {v: Entity User | v == getJust (entityKey v)} @-}
+
+
+
+{-@ assume userId' :: EntityFieldWrapper <
+    {\row viewer -> True}
+  , {\row field  -> field == entityKey row}
+  , {\field row  -> field == entityKey row}
+  > _ _
+@-}
+userId' :: EntityFieldWrapper User UserId
+userId' = EntityFieldWrapper UserId
+
+{-@ assume userName' :: EntityFieldWrapper <
+    {\_ _ -> True}
+  , {\row field  -> field == userName (entityVal row)}
+  , {\field row  -> field == userName (entityVal row)}
+  > _ _
+@-}
+userName' :: EntityFieldWrapper User Text
+userName' = EntityFieldWrapper UserName
+
+{-@ assume userSsn' :: EntityFieldWrapper <
+    {\user viewer -> entityKey viewer == entityKey user}
+  , {\row field  -> field == userSsn (entityVal row)}
+  , {\field row  -> field == userSsn (entityVal row)}
+  > _ _
+@-}
+userSsn' :: EntityFieldWrapper User Text
+userSsn' = EntityFieldWrapper UserSsn
 
 -- * TodoItem
-{-@
-data TodoItem = TodoItem
-  { todoItemOwner :: Key User
-  , todoItemTask :: {v:_ | tlen v > 0}
-  }
+
+{-@ measure todoItemOwner :: TodoItem -> UserId @-}
+{-@ measure todoItemTask :: TodoItem -> Text @-}
+
+{-@ mkTodoItem :: 
+     x_0: UserId
+  -> x_1: Text
+  -> BinahRecord < 
+       {\row -> todoItemOwner (entityVal row) == x_0 && todoItemTask (entityVal row) == x_1}
+     , {\_ _ -> True}
+     , {\row viewer -> (shared (todoItemOwner (entityVal row)) (entityKey viewer))}
+     > TodoItem
 @-}
+mkTodoItem x_0 x_1 = BinahRecord (TodoItem x_0 x_1)
 
-{-@ assume todoItemIdField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == entityKey row}, {\field row -> field == entityKey row}> _ _ @-}
-todoItemIdField :: EntityFieldWrapper TodoItem (Key TodoItem)
-todoItemIdField = EntityFieldWrapper TodoItemId
+{-@ invariant {v: Entity TodoItem | v == getJust (entityKey v)} @-}
 
-{-@ assume todoItemOwnerField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == todoItemOwner (entityVal row)}, {\field row -> field == todoItemOwner (entityVal row)}> _ _ @-}
-todoItemOwnerField :: EntityFieldWrapper TodoItem (Key User)
-todoItemOwnerField = EntityFieldWrapper TodoItemOwner
 
-{-@ assume todoItemTaskField :: EntityFieldWrapper <{\row viewer -> shared (todoItemOwner (entityVal row)) (entityKey viewer)}, {\row field -> field == todoItemTask (entityVal row)}, {\field row -> field == todoItemTask (entityVal row)}> _ {v:_ | tlen v > 0} @-}
-todoItemTaskField :: EntityFieldWrapper TodoItem Text
-todoItemTaskField = EntityFieldWrapper TodoItemTask
+
+{-@ assume todoItemId' :: EntityFieldWrapper <
+    {\row viewer -> True}
+  , {\row field  -> field == entityKey row}
+  , {\field row  -> field == entityKey row}
+  > _ _
+@-}
+todoItemId' :: EntityFieldWrapper TodoItem TodoItemId
+todoItemId' = EntityFieldWrapper TodoItemId
+
+{-@ assume todoItemOwner' :: EntityFieldWrapper <
+    {\_ _ -> True}
+  , {\row field  -> field == todoItemOwner (entityVal row)}
+  , {\field row  -> field == todoItemOwner (entityVal row)}
+  > _ _
+@-}
+todoItemOwner' :: EntityFieldWrapper TodoItem UserId
+todoItemOwner' = EntityFieldWrapper TodoItemOwner
+
+{-@ assume todoItemTask' :: EntityFieldWrapper <
+    {\item viewer -> shared (todoItemOwner (entityVal item)) (entityKey viewer)}
+  , {\row field  -> field == todoItemTask (entityVal row)}
+  , {\field row  -> field == todoItemTask (entityVal row)}
+  > _ _
+@-}
+todoItemTask' :: EntityFieldWrapper TodoItem Text
+todoItemTask' = EntityFieldWrapper TodoItemTask
 
 -- * Share
-{-@
-data Share = Share
-  { shareFrom :: Key User
-  , shareTo :: Key User
-  }
+
+{-@ measure shareFrom :: Share -> UserId @-}
+{-@ measure shareTo :: Share -> UserId @-}
+
+{-@ mkShare :: 
+     x_0: UserId
+  -> x_1: UserId
+  -> BinahRecord < 
+       {\row -> shareFrom (entityVal row) == x_0 && shareTo (entityVal row) == x_1}
+     , {\_ _ -> True}
+     , {\row viewer -> False}
+     > Share
 @-}
+mkShare x_0 x_1 = BinahRecord (Share x_0 x_1)
 
--- This measure represents the abstract relationship that the first user has
--- shared something with the second user. It's attached to the database record
--- that attests that relationship.
---
--- TODO: It's at least inadivsable, and possibly unsound, to assume that this
--- relationship holds for any `Shared`. Really what we want is to know that it
--- holds for any `Shared` that we get back from the database. It's not clear how
--- to do this parametrically, though.
-{-@ measure shared :: Key User -> Key User -> Bool @-}
-{-@ invariant {v:Share | shared (shareFrom v) (shareTo v)} @-}
+{-@ invariant {v: Entity Share | v == getJust (entityKey v)} @-}
 
-{-@ assume shareIdField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == entityKey row}, {\field row -> field == entityKey row}> _ _ @-}
-shareIdField :: EntityFieldWrapper Share (Key Share)
-shareIdField = EntityFieldWrapper ShareId
+{-@ invariant {v: Entity Share | shared (shareFrom (entityVal v)) (shareTo (entityVal v))} @-}
 
-{-@ assume shareFromField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == shareFrom (entityVal row)}, {\field row -> field == shareFrom (entityVal row)}> _ _ @-}
-shareFromField :: EntityFieldWrapper Share (Key User)
-shareFromField = EntityFieldWrapper ShareFrom
+{-@ assume shareId' :: EntityFieldWrapper <
+    {\row viewer -> True}
+  , {\row field  -> field == entityKey row}
+  , {\field row  -> field == entityKey row}
+  > _ _
+@-}
+shareId' :: EntityFieldWrapper Share ShareId
+shareId' = EntityFieldWrapper ShareId
 
-{-@ assume shareToField :: EntityFieldWrapper <{\row viewer -> True}, {\row field -> field == shareTo (entityVal row)}, {\field row -> field == shareTo (entityVal row)}> _ _ @-}
-shareToField :: EntityFieldWrapper Share (Key User)
-shareToField = EntityFieldWrapper ShareTo
+{-@ assume shareFrom' :: EntityFieldWrapper <
+    {\_ _ -> True}
+  , {\row field  -> field == shareFrom (entityVal row)}
+  , {\field row  -> field == shareFrom (entityVal row)}
+  > _ _
+@-}
+shareFrom' :: EntityFieldWrapper Share UserId
+shareFrom' = EntityFieldWrapper ShareFrom
+
+{-@ assume shareTo' :: EntityFieldWrapper <
+    {\_ _ -> True}
+  , {\row field  -> field == shareTo (entityVal row)}
+  , {\field row  -> field == shareTo (entityVal row)}
+  > _ _
+@-}
+shareTo' :: EntityFieldWrapper Share UserId
+shareTo' = EntityFieldWrapper ShareTo
+
+--------------------------------------------------------------------------------
+-- | Inline
+--------------------------------------------------------------------------------
+
+

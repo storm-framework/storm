@@ -1,0 +1,15 @@
+predicate shared :: UserId -> UserId -> Bool
+
+User
+  name Text
+  ssn  Text {\user viewer -> entityKey viewer == entityKey user}
+
+TodoItem
+  owner UserId
+  task  Text   {\item viewer -> shared (todoItemOwner item) (entityKey viewer)}
+
+Share
+  from UserId
+  to   UserId
+
+  assert [shared from to]
