@@ -17,14 +17,15 @@ import           Model
 assume insert :: forall < p :: Entity record -> Bool
                         , insertpolicy :: Entity record -> Entity User -> Bool
                         , querypolicy  :: Entity record -> Entity User -> Bool
-                        , level    :: Entity User -> Bool
                         , audience :: Entity User -> Bool
                         >.
-  { rec :: (Entity<p> record) |- {v: (Entity<level> User) | True} <: {v: (Entity<insertpolicy rec> User) | True}}
+  { rec :: (Entity<p> record) 
+      |- {v: (Entity User) | v == currentUser} <: {v: (Entity<insertpolicy rec> User) | True}}
 
-  { rec :: (Entity<p> record) |- {v: (Entity<querypolicy p> User) | True} <: {v: (Entity<audience> User) | True}}
+  { rec :: (Entity<p> record) 
+      |- {v: (Entity<querypolicy p> User) | True} <: {v: (Entity<audience> User) | True}}
 
-  BinahRecord<p, insertpolicy, querypolicy> record -> TaggedT<level, audience> _ (Key record)
+  BinahRecord<p, insertpolicy, querypolicy> record -> TaggedT<{\_ -> True}, audience> _ (Key record)
 @-}
 insert
   :: ( MonadTIO m
