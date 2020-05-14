@@ -71,7 +71,9 @@ data EntityFieldWrapper record typ < policy :: Entity record -> Entity User -> B
 data EntityFieldWrapper record typ = EntityFieldWrapper (Persist.EntityField record typ)
 {-@ data variance EntityFieldWrapper covariant covariant invariant invariant invariant @-}
 
---------------------------------------------------------------------------------
+{-@ measure currentUser :: Entity User @-}
+
+---------------------------------------------------------------------------------
 -- | Predicates
 --------------------------------------------------------------------------------
 

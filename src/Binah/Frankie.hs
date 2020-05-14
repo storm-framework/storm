@@ -42,8 +42,6 @@ import Model
 reading :: Monad m => m r -> ReaderT r m a -> m a
 reading r m = r >>= runReaderT m
 
-{-@ measure currentUser :: Entity User @-}
-
 -- TODO: Fill this out
 {-
 instance MonadController s w m => MonadController s w (TaggedT m) where
