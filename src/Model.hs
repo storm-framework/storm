@@ -62,18 +62,20 @@ Share
 |]
 
 {-@
-data EntityFieldWrapper record typ < policy :: Entity record -> Entity User -> Bool
+data EntityFieldWrapper record typ < querypolicy :: Entity record -> Entity User -> Bool
                                    , selector :: Entity record -> typ -> Bool
                                    , flippedselector :: typ -> Entity record -> Bool
+                                   , capability :: Entity record -> Bool
+                                   , updatepolicy :: Entity record -> Entity record -> Entity User -> Bool
                                    > = EntityFieldWrapper _
 @-}
 
 data EntityFieldWrapper record typ = EntityFieldWrapper (Persist.EntityField record typ)
-{-@ data variance EntityFieldWrapper covariant covariant invariant invariant invariant @-}
+{-@ data variance EntityFieldWrapper covariant covariant invariant invariant invariant invariant invariant @-}
 
 {-@ measure currentUser :: Entity User @-}
 
----------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- | Predicates
 --------------------------------------------------------------------------------
 
@@ -106,17 +108,13 @@ persistentRecord (BinahRecord record) = record
 {-@ measure getJust :: Key record -> Entity record @-}
 
 -- * User
-
-{-@ measure userName :: User -> Text @-}
-{-@ measure userSsn :: User -> Text @-}
-
 {-@ mkUser :: 
      x_0: Text
   -> x_1: Text
   -> BinahRecord < 
        {\row -> userName (entityVal row) == x_0 && userSsn (entityVal row) == x_1}
      , {\_ _ -> True}
-     , {\row viewer -> (entityKey viewer == entityKey row)}
+     , {\x_0 x_1 -> (entityKey x_1 == entityKey x_0)}
      > User
 @-}
 mkUser x_0 x_1 = BinahRecord (User x_0 x_1)
@@ -129,41 +127,51 @@ mkUser x_0 x_1 = BinahRecord (User x_0 x_1)
     {\row viewer -> True}
   , {\row field  -> field == entityKey row}
   , {\field row  -> field == entityKey row}
+  , {\_ -> False}
+  , {\_ _ _ -> True}
   > _ _
 @-}
 userId' :: EntityFieldWrapper User UserId
 userId' = EntityFieldWrapper UserId
 
+{-@ measure userName :: User -> Text @-}
+
+{-@ measure userNameCap :: Entity User -> Bool @-}
+
 {-@ assume userName' :: EntityFieldWrapper <
     {\_ _ -> True}
   , {\row field  -> field == userName (entityVal row)}
   , {\field row  -> field == userName (entityVal row)}
+  , {\old -> userNameCap old}
+  , {\old _ _ -> userNameCap old}
   > _ _
 @-}
 userName' :: EntityFieldWrapper User Text
 userName' = EntityFieldWrapper UserName
 
+{-@ measure userSsn :: User -> Text @-}
+
+{-@ measure userSsnCap :: Entity User -> Bool @-}
+
 {-@ assume userSsn' :: EntityFieldWrapper <
-    {\user viewer -> entityKey viewer == entityKey user}
+    {\x_0 x_1 -> (entityKey x_1 == entityKey x_0)}
   , {\row field  -> field == userSsn (entityVal row)}
   , {\field row  -> field == userSsn (entityVal row)}
+  , {\old -> userSsnCap old}
+  , {\old _ _ -> userSsnCap old}
   > _ _
 @-}
 userSsn' :: EntityFieldWrapper User Text
 userSsn' = EntityFieldWrapper UserSsn
 
 -- * TodoItem
-
-{-@ measure todoItemOwner :: TodoItem -> UserId @-}
-{-@ measure todoItemTask :: TodoItem -> Text @-}
-
 {-@ mkTodoItem :: 
      x_0: UserId
   -> x_1: Text
   -> BinahRecord < 
        {\row -> todoItemOwner (entityVal row) == x_0 && todoItemTask (entityVal row) == x_1}
      , {\_ _ -> True}
-     , {\row viewer -> (shared (todoItemOwner (entityVal row)) (entityKey viewer))}
+     , {\x_0 x_1 -> (shared (todoItemOwner (entityVal x_0)) (entityKey x_1))}
      > TodoItem
 @-}
 mkTodoItem x_0 x_1 = BinahRecord (TodoItem x_0 x_1)
@@ -176,41 +184,51 @@ mkTodoItem x_0 x_1 = BinahRecord (TodoItem x_0 x_1)
     {\row viewer -> True}
   , {\row field  -> field == entityKey row}
   , {\field row  -> field == entityKey row}
+  , {\_ -> False}
+  , {\_ _ _ -> True}
   > _ _
 @-}
 todoItemId' :: EntityFieldWrapper TodoItem TodoItemId
 todoItemId' = EntityFieldWrapper TodoItemId
 
+{-@ measure todoItemOwner :: TodoItem -> UserId @-}
+
+{-@ measure todoItemOwnerCap :: Entity TodoItem -> Bool @-}
+
 {-@ assume todoItemOwner' :: EntityFieldWrapper <
     {\_ _ -> True}
   , {\row field  -> field == todoItemOwner (entityVal row)}
   , {\field row  -> field == todoItemOwner (entityVal row)}
+  , {\old -> todoItemOwnerCap old}
+  , {\old _ _ -> todoItemOwnerCap old}
   > _ _
 @-}
 todoItemOwner' :: EntityFieldWrapper TodoItem UserId
 todoItemOwner' = EntityFieldWrapper TodoItemOwner
 
+{-@ measure todoItemTask :: TodoItem -> Text @-}
+
+{-@ measure todoItemTaskCap :: Entity TodoItem -> Bool @-}
+
 {-@ assume todoItemTask' :: EntityFieldWrapper <
-    {\item viewer -> shared (todoItemOwner (entityVal item)) (entityKey viewer)}
+    {\x_0 x_1 -> (shared (todoItemOwner (entityVal x_0)) (entityKey x_1))}
   , {\row field  -> field == todoItemTask (entityVal row)}
   , {\field row  -> field == todoItemTask (entityVal row)}
+  , {\old -> todoItemTaskCap old}
+  , {\old _ _ -> todoItemTaskCap old}
   > _ _
 @-}
 todoItemTask' :: EntityFieldWrapper TodoItem Text
 todoItemTask' = EntityFieldWrapper TodoItemTask
 
 -- * Share
-
-{-@ measure shareFrom :: Share -> UserId @-}
-{-@ measure shareTo :: Share -> UserId @-}
-
 {-@ mkShare :: 
      x_0: UserId
   -> x_1: UserId
   -> BinahRecord < 
        {\row -> shareFrom (entityVal row) == x_0 && shareTo (entityVal row) == x_1}
      , {\_ _ -> True}
-     , {\row viewer -> False}
+     , {\x_0 x_1 -> False}
      > Share
 @-}
 mkShare x_0 x_1 = BinahRecord (Share x_0 x_1)
@@ -223,24 +241,38 @@ mkShare x_0 x_1 = BinahRecord (Share x_0 x_1)
     {\row viewer -> True}
   , {\row field  -> field == entityKey row}
   , {\field row  -> field == entityKey row}
+  , {\_ -> False}
+  , {\_ _ _ -> True}
   > _ _
 @-}
 shareId' :: EntityFieldWrapper Share ShareId
 shareId' = EntityFieldWrapper ShareId
 
+{-@ measure shareFrom :: Share -> UserId @-}
+
+{-@ measure shareFromCap :: Entity Share -> Bool @-}
+
 {-@ assume shareFrom' :: EntityFieldWrapper <
     {\_ _ -> True}
   , {\row field  -> field == shareFrom (entityVal row)}
   , {\field row  -> field == shareFrom (entityVal row)}
+  , {\old -> shareFromCap old}
+  , {\old _ _ -> shareFromCap old}
   > _ _
 @-}
 shareFrom' :: EntityFieldWrapper Share UserId
 shareFrom' = EntityFieldWrapper ShareFrom
 
+{-@ measure shareTo :: Share -> UserId @-}
+
+{-@ measure shareToCap :: Entity Share -> Bool @-}
+
 {-@ assume shareTo' :: EntityFieldWrapper <
     {\_ _ -> True}
   , {\row field  -> field == shareTo (entityVal row)}
   , {\field row  -> field == shareTo (entityVal row)}
+  , {\old -> shareToCap old}
+  , {\old _ _ -> shareToCap old}
   > _ _
 @-}
 shareTo' :: EntityFieldWrapper Share UserId

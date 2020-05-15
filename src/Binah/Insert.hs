@@ -20,10 +20,12 @@ assume insert :: forall < p :: Entity record -> Bool
                         , audience :: Entity User -> Bool
                         >.
   { rec :: (Entity<p> record) 
-      |- {v: (Entity User) | v == currentUser} <: {v: (Entity<insertpolicy rec> User) | True}}
+      |- {v: (Entity User) | v == currentUser} <: {v: (Entity<insertpolicy rec> User) | True}
+  }
 
   { rec :: (Entity<p> record) 
-      |- {v: (Entity<querypolicy p> User) | True} <: {v: (Entity<audience> User) | True}}
+      |- {v: (Entity<querypolicy p> User) | True} <: {v: (Entity<audience> User) | True}
+  }
 
   BinahRecord<p, insertpolicy, querypolicy> record -> TaggedT<{\_ -> True}, audience> _ (Key record)
 @-}
