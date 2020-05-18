@@ -1,9 +1,12 @@
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE ScopedTypeVariables, TypeApplications, AllowAmbiguousTypes #-}
+{-# LANGUAGE ScopedTypeVariables, AllowAmbiguousTypes #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Binah.Templates
-  ( TemplateData(..)
-  , HasTemplateCache(..)
+  ( HasTemplateCache(..)
+  , TemplateData(..)
   , renderTemplate
   )
 where
@@ -19,14 +22,19 @@ import           Control.Concurrent.MVar        ( MVar
                                                 )
 import           Control.Exception              ( evaluate )
 
+import qualified Database.Persist              as Persist
+import           Database.Persist.Sql           ( fromSqlKey
+                                                , SqlBackend
+                                                )
 import           Binah.Infrastructure
 import           Binah.Filters
 import           Binah.Frankie
 
 import           Model
 
-class Mustache.ToMustache d => TemplateData d where
+class TemplateData d where
   templateFile :: FilePath
+  toMustache :: d -> Mustache.Value
 
 class HasTemplateCache config where
   getTemplateCache :: config -> MVar Mustache.TemplateCache
@@ -42,28 +50,16 @@ getOrLoadTemplate searchDirs file = do
   oldCache  <- liftTIO $ TIO (readMVar cacheMVar)
   case HashMap.lookup file oldCache of
     Just template -> pure template
-    Nothing ->
-      liftTIO
-        $   TIO
-        $   Mustache.compileTemplateWithCache searchDirs oldCache file
-        >>= \case
-              Right template ->
-                let updatedCache = HashMap.insert
-                      (Mustache.name template)
-                      template
-                      (Mustache.partials template)
-                in  do
-                      modifyMVar_
-                        cacheMVar
-                        (\currentCache ->
-                          evaluate $ currentCache <> updatedCache
-                        )
-                      pure template
-              Left err ->
-                error $ "Error parsing template " ++ file ++ ": " ++ show err
+    Nothing -> liftTIO $ TIO $ Mustache.compileTemplateWithCache searchDirs oldCache file >>= \case
+      Right template -> do
+        let updatedCache =
+              HashMap.insert (Mustache.name template) template (Mustache.partials template)
+        modifyMVar_ cacheMVar (\currentCache -> evaluate $ currentCache <> updatedCache)
+        return template
+      Left err -> error $ "Error parsing template " ++ file ++ ": " ++ show err
 
-{-@ assume renderTemplate :: _ -> TaggedT<{\_ -> True}, {\_ -> False}> _ _ @-}
 {-@ ignore renderTemplate @-}
+{-@ assume renderTemplate :: _ -> TaggedT<{\_ -> True}, {\_ -> False}> _ _ @-}
 renderTemplate
   :: forall d w m config
    . ( MonadController w m
@@ -76,7 +72,11 @@ renderTemplate
   -> TaggedT m Text
 renderTemplate templateData = do
   template <- getOrLoadTemplate searchDirs file
-  pure $ Mustache.substitute template templateData
+  pure $ Mustache.substitute template (toMustache templateData)
  where
-  file       = templateFile @d
   searchDirs = ["templates"]
+  file       = templateFile @d
+
+
+instance Persist.ToBackendKey SqlBackend record => Mustache.ToMustache (Persist.Key record) where
+  toMustache id = Mustache.toMustache (show (fromSqlKey id))

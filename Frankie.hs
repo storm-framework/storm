@@ -5,39 +5,54 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module Binah.Frankie (MonadController(..), HasSqlBackend(..), reading, backend, respondTagged, requireAuthUser, module Frankie) where
+module Binah.Frankie
+  ( MonadController(..)
+  , HasSqlBackend(..)
+  , reading
+  , backend
+  , respondTagged
+  , requireAuthUser
+  , parseForm
+  , module Frankie
+  )
+where
 
-import Control.Monad.Reader (MonadReader(..), ReaderT(..), withReaderT)
-import Data.Typeable (Typeable)
-import Control.Monad.Trans (MonadTrans(..))
-import Control.Exception (try)
-import Data.Text (Text)
-import Control.Monad ((>=>))
-import qualified Database.Persist as Persist
-import qualified Database.Persist.Sqlite as Persist
-import qualified Network.Wai as Wai
-import qualified Network.Wai.Handler.Warp as Wai
-import qualified Data.Text as Text
-import Data.ByteString (ByteString)
-import qualified Data.ByteString as ByteString
-import qualified Data.ByteString.Base64 as Base64
-import Data.Either.Combinators (rightToMaybe)
-import qualified Data.Text.Encoding as Text
-import Data.Maybe (fromJust)
+import           Control.Monad.Reader           ( MonadReader(..)
+                                                , ReaderT(..)
+                                                , withReaderT
+                                                )
+import           Data.Typeable                  ( Typeable )
+import           Control.Monad.Trans            ( MonadTrans(..) )
+import           Control.Exception              ( try )
+import           Data.Text                      ( Text )
+import           Control.Monad                  ( (>=>) )
+import qualified Database.Persist              as Persist
+import qualified Database.Persist.Sqlite       as Persist
+import qualified Network.Wai                   as Wai
+import qualified Network.Wai.Handler.Warp      as Wai
+import qualified Network.Wai.Parse             as Wai
+import qualified Data.Text                     as Text
+import           Data.ByteString                ( ByteString )
+import qualified Data.ByteString               as ByteString
+import qualified Data.ByteString.Base64        as Base64
+import           Data.Either.Combinators        ( rightToMaybe )
+import qualified Data.Text.Encoding            as Text
+import           Data.Maybe                     ( fromJust )
+import           Data.Bifunctor                 ( bimap )
 
-import Prelude hiding (log)
+import           Prelude                 hiding ( log )
 
-import Frankie
-import Frankie.Config
-import Frankie.Auth
+import           Frankie
+import           Frankie.Config
+import           Frankie.Auth
 import qualified Frankie.Auth
 
-import Binah.Core
-import Binah.Infrastructure
-import Binah.Filters
-import Binah.Actions
+import           Binah.Core
+import           Binah.Infrastructure
+import           Binah.Filters
+import           Binah.Actions
 
-import Model
+import           Model
 
 reading :: Monad m => m r -> ReaderT r m a -> m a
 reading r m = r >>= runReaderT m
@@ -88,14 +103,18 @@ instance WebMonad TIO where
   reqQueryString = Wai.queryString . unRequestTIO
   reqHeaders     = Wai.requestHeaders . unRequestTIO
   reqBody        = TIO . Wai.strictRequestBody . unRequestTIO
-  tryWeb act     = do er <- (TIO . try . runTIO) act
-                      case er of
-                        Left e -> return . Left . toException $ e
-                        r -> return r
+  tryWeb act = do
+    er <- (TIO . try . runTIO) act
+    case er of
+      Left e -> return . Left . toException $ e
+      r      -> return r
   server port hostPref app =
-    let settings = Wai.setHost hostPref $ Wai.setPort port $
-                   Wai.setServerName "frankie" $ Wai.defaultSettings
-    in Wai.runSettings settings $ toWaiApplication app
+    let settings =
+            Wai.setHost hostPref
+              $ Wai.setPort port
+              $ Wai.setServerName "frankie"
+              $ Wai.defaultSettings
+    in  Wai.runSettings settings $ toWaiApplication app
 
 instance MonadTIO m => MonadTIO (ControllerT m) where
   liftTIO x = lift (liftTIO x)
@@ -104,14 +123,20 @@ toWaiApplication :: Application TIO -> Wai.Application
 toWaiApplication app wReq wRespond = do
   resp <- runTIO $ app req
   wRespond $ toWaiResponse resp
-    where req :: Request TIO
-          req = RequestTIO $ wReq { Wai.pathInfo = trimPath $ Wai.pathInfo wReq }
-          toWaiResponse :: Response -> Wai.Response
-          toWaiResponse (Response status headers body) = Wai.responseLBS status headers body
+ where
+  req :: Request TIO
+  req = RequestTIO $ wReq { Wai.pathInfo = trimPath $ Wai.pathInfo wReq }
+  toWaiResponse :: Response -> Wai.Response
+  toWaiResponse (Response status headers body) = Wai.responseLBS status headers body
 
 {-@ ignore trimPath @-}
 trimPath :: [Text] -> [Text]
-trimPath path =
-  if (not . null $ path) && Text.null (last path)
-  then init path
-  else path
+trimPath path = if (not . null $ path) && Text.null (last path) then init path else path
+
+{-@ ignore parseForm @-}
+{-@ parseForm :: TaggedT<{\_ -> True }, {\_ -> False}> _ _ @-}
+parseForm :: (MonadController TIO m, MonadTIO m) => TaggedT m [(Text, Text)]
+parseForm = do
+  req    <- request
+  parsed <- liftTIO $ TIO $ Wai.parseRequestBody Wai.lbsBackEnd $ unRequestTIO req
+  return $ map (bimap Text.decodeUtf8 Text.decodeUtf8) (fst parsed)
