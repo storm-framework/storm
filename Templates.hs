@@ -62,12 +62,7 @@ getOrLoadTemplate searchDirs file = do
 {-@ assume renderTemplate :: _ -> TaggedT<{\_ -> True}, {\_ -> False}> _ _ @-}
 renderTemplate
   :: forall d w m config
-   . ( MonadController w m
-     , MonadTIO m
-     , MonadConfig config m
-     , TemplateData d
-     , HasTemplateCache config
-     )
+   . (MonadTIO m, MonadConfig config m, TemplateData d, HasTemplateCache config)
   => d
   -> TaggedT m Text
 renderTemplate templateData = do
