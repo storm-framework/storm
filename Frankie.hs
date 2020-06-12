@@ -1,3 +1,4 @@
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -25,6 +26,7 @@ import           Data.Typeable                  ( Typeable )
 import           Control.Monad.Trans            ( MonadTrans(..) )
 import           Control.Exception              ( try )
 import           Data.Text                      ( Text )
+import qualified Data.Text                     as T
 import           Control.Monad                  ( (>=>) )
 import qualified Database.Persist              as Persist
 import qualified Database.Persist.Sqlite       as Persist
@@ -53,6 +55,7 @@ import           Binah.Filters
 import           Binah.Actions
 
 import           Model
+import           Text.Read                      ( readMaybe )
 
 reading :: Monad m => m r -> ReaderT r m a -> m a
 reading r m = r >>= runReaderT m
@@ -140,3 +143,6 @@ parseForm = do
   req    <- request
   parsed <- liftTIO $ TIO $ Wai.parseRequestBody Wai.lbsBackEnd $ unRequestTIO req
   return $ map (bimap Text.decodeUtf8 Text.decodeUtf8) (fst parsed)
+
+instance (Persist.ToBackendKey Persist.SqlBackend record, Typeable record) => Parseable (Key record) where
+  parseText = fmap Persist.toSqlKey . readMaybe . T.unpack
