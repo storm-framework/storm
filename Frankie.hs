@@ -1,4 +1,3 @@
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -8,9 +7,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Binah.Frankie
   ( MonadController(..)
-  , HasSqlBackend(..)
-  , reading
-  , backend
   , respondTagged
   , requireAuthUser
   , parseForm
@@ -20,26 +16,17 @@ where
 
 import           Control.Monad.Reader           ( MonadReader(..)
                                                 , ReaderT(..)
-                                                , withReaderT
                                                 )
 import           Data.Typeable                  ( Typeable )
 import           Control.Monad.Trans            ( MonadTrans(..) )
 import           Control.Exception              ( try )
-import           Data.Text                      ( Text )
 import qualified Data.Text                     as T
-import           Control.Monad                  ( (>=>) )
+import qualified Data.Text.Encoding            as T
 import qualified Database.Persist              as Persist
 import qualified Database.Persist.Sqlite       as Persist
 import qualified Network.Wai                   as Wai
 import qualified Network.Wai.Handler.Warp      as Wai
 import qualified Network.Wai.Parse             as Wai
-import qualified Data.Text                     as Text
-import           Data.ByteString                ( ByteString )
-import qualified Data.ByteString               as ByteString
-import qualified Data.ByteString.Base64        as Base64
-import           Data.Either.Combinators        ( rightToMaybe )
-import qualified Data.Text.Encoding            as Text
-import           Data.Maybe                     ( fromJust )
 import           Data.Bifunctor                 ( bimap )
 
 import           Prelude                 hiding ( log )
@@ -56,9 +43,6 @@ import           Binah.Actions
 
 import           Model
 import           Text.Read                      ( readMaybe )
-
-reading :: Monad m => m r -> ReaderT r m a -> m a
-reading r m = r >>= runReaderT m
 
 -- TODO: Fill this out
 {-
@@ -91,12 +75,6 @@ instance MonadConfig config m => MonadConfig config (ReaderT r m) where
 
 instance MonadTIO m => MonadTIO (ConfigT config m) where
   liftTIO x = lift (liftTIO x)
-
-class HasSqlBackend config where
-  getSqlBackend :: config -> Persist.SqlBackend
-
-backend :: (MonadConfig config m, HasSqlBackend config) => m Persist.SqlBackend
-backend = getSqlBackend <$> getConfig
 
 instance WebMonad TIO where
   data Request TIO = RequestTIO { unRequestTIO :: Wai.Request }
@@ -133,16 +111,16 @@ toWaiApplication app wReq wRespond = do
   toWaiResponse (Response status headers body) = Wai.responseLBS status headers body
 
 {-@ ignore trimPath @-}
-trimPath :: [Text] -> [Text]
-trimPath path = if (not . null $ path) && Text.null (last path) then init path else path
+trimPath :: [T.Text] -> [T.Text]
+trimPath path = if (not . null $ path) && T.null (last path) then init path else path
 
 {-@ ignore parseForm @-}
 {-@ parseForm :: TaggedT<{\_ -> True }, {\_ -> False}> _ _ @-}
-parseForm :: (MonadController TIO m, MonadTIO m) => TaggedT m [(Text, Text)]
+parseForm :: (MonadController TIO m, MonadTIO m) => TaggedT m [(T.Text, T.Text)]
 parseForm = do
   req    <- request
   parsed <- liftTIO $ TIO $ Wai.parseRequestBody Wai.lbsBackEnd $ unRequestTIO req
-  return $ map (bimap Text.decodeUtf8 Text.decodeUtf8) (fst parsed)
+  return $ map (bimap T.decodeUtf8 T.decodeUtf8) (fst parsed)
 
 instance (Persist.ToBackendKey Persist.SqlBackend record, Typeable record) => Parseable (Key record) where
   parseText = fmap Persist.toSqlKey . readMaybe . T.unpack
