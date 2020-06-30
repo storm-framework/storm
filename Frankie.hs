@@ -10,6 +10,7 @@ module Binah.Frankie
   , respondTagged
   , requireAuthUser
   , parseForm
+  , initWithT
   , module Frankie
   )
 where
@@ -99,6 +100,9 @@ instance WebMonad TIO where
 
 instance MonadTIO m => MonadTIO (ControllerT m) where
   liftTIO x = lift (liftTIO x)
+
+-- initWithT :: (TaggedT m () -> TaggedT (ControllerT w) ()) -> Frankie.FrankieConfigMode w m ()
+initWithT initializeFun = initWith $ unTag . initializeFun
 
 toWaiApplication :: Application TIO -> Wai.Application
 toWaiApplication app wReq wRespond = do
