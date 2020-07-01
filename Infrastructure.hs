@@ -29,8 +29,9 @@ data TaggedT m a = TaggedT { unTag :: m a }
 type Tagged a = TaggedT Identity a
 
 -- * Functions
-liftTaggedT :: Monad m => m a -> TaggedT m a
-liftTaggedT = TaggedT
+{-@ liftT :: m a -> TaggedT<{\_ -> True}, {\_ -> False}> m a @-}
+liftT :: Monad m => m a -> TaggedT m a
+liftT = TaggedT
 
 {-@
 assume mapTaggedT :: forall <label :: Entity User -> Bool, clear :: Entity User -> Bool>. _ -> TaggedT<label, clear> _ _ -> TaggedT<label, clear> _ _
@@ -107,6 +108,16 @@ instance Monad m => Monad (TaggedT m) where
 returnTagged :: Monad m => a -> TaggedT m a
 returnTagged = return
 
+-- Monad Transformers
+
+instance MonadTrans TaggedT where
+  lift = liftT
+
+instance MonadReader r m => MonadReader r (TaggedT m) where
+  ask   = lift ask
+  local = mapTaggedT . local
+  reader x = lift (reader x)
+
 -- ** MonadTIO
 
 instance MonadTIO TIO where
@@ -118,15 +129,10 @@ instance MonadTIO IO where
 instance MonadTIO m => MonadTIO (ReaderT r m) where
   liftTIO x = lift (liftTIO x)
 
+
+{-@
 instance MonadTIO m => MonadTIO (TaggedT m) where
-  liftTIO x = lift (liftTIO x)
-
--- Monad Transformers
-
-instance MonadTrans TaggedT where
-  lift = liftTaggedT
-
-instance MonadReader r m => MonadReader r (TaggedT m) where
-  ask   = lift ask
-  local = mapTaggedT . local
-  reader x = lift (reader x)
+  liftTIO :: TIO a -> TaggedT<{\_ -> True}, {\_ -> False}> m a
+@-}
+instance MonadTIO m => MonadTIO (TaggedT m) where
+  liftTIO x = liftT (liftTIO x)

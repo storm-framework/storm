@@ -11,6 +11,8 @@ module Binah.Frankie
   , requireAuthUser
   , parseForm
   , initWithT
+  , getConfigT
+  , requestT
   , module Frankie
   )
 where
@@ -55,6 +57,10 @@ instance MonadController w m => MonadController w (TaggedT m) where
   respond = respondTagged
   liftWeb x = lift (liftWeb x)
 
+{-@ requestT :: TaggedT<{\_ -> True}, {\_ -> False}> m (Request w) @-}
+requestT :: MonadController w m => TaggedT m (Request w)
+requestT = liftT request
+
 {-@ assume respondTagged :: _ -> TaggedT<{\_ -> True}, {\u -> u == currentUser}> _ _ @-}
 respondTagged :: MonadController w m => Response -> TaggedT m a
 respondTagged x = lift (respond x)
@@ -63,8 +69,17 @@ respondTagged x = lift (respond x)
 requireAuthUser :: MonadAuth (Entity User) m => m (Entity User)
 requireAuthUser = requireAuth
 
+{-@ getConfigT :: TaggedT<{\_ -> True}, {\_ -> False}> m config @-}
+getConfigT :: MonadConfig config m => TaggedT m config
+getConfigT = liftT getConfig
+
+-- TODO: Check why this type is not being exported
+{-
 instance MonadConfig config m => MonadConfig config (TaggedT m) where
-  getConfig = lift getConfig
+  getConfig :: TaggedT<{\_ -> True}, {\_ -> False}> m config
+@-}
+instance MonadConfig config m => MonadConfig config (TaggedT m) where
+  getConfig = getConfigT
 
 instance MonadController w m => MonadController w (ReaderT r m) where
   request = lift request
