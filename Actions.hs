@@ -73,8 +73,8 @@ assume project :: forall < policy :: Entity record -> Entity User -> Bool
                          >.
   {row :: (Entity<r> record) |- {v:(Entity <label> User) | True} <: {v:(Entity<policy row> User) | True}}
   {row :: (Entity<r> record) |- {v:(Entity<policy row> User) | True} <: {v:(Entity <label> User) | True}}
-  EntityFieldWrapper<policy, selector, flippedselector, capability, updatepolicy> record typ 
-  -> row:(Entity<r> record) 
+  EntityFieldWrapper<policy, selector, flippedselector, capability, updatepolicy> record typ
+  -> row:(Entity<r> record)
   -> TaggedT<label, {\_ -> False}> _ (typ<selector row>)
 @-}
 project
@@ -109,8 +109,8 @@ assume projectList :: forall < r1 :: Entity record -> Bool
                              >.
   { row :: (Entity <r1> record) |- {v:(Entity <p> User) | True} <: {v:(Entity <policy row> User) | True} }
   { row :: (Entity <r1> record) |- typ<selector row> <: typ<r2> }
-  EntityFieldWrapper<policy, selector, inverseselector, capability, updatepolicy> record typ 
-  -> [(Entity <r1> record)] 
+  EntityFieldWrapper<policy, selector, inverseselector, capability, updatepolicy> record typ
+  -> [(Entity <r1> record)]
   -> TaggedT<p, {\_ -> False}> _ [typ<r2>]
 @-}
 projectList

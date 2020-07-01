@@ -9,6 +9,9 @@ import           Control.Monad.IO.Class         ( MonadIO(..) )
 import           Control.Monad.Reader           ( MonadReader(..)
                                                 , ReaderT(..)
                                                 )
+import           Control.Monad                  ( when
+                                                , replicateM
+                                                )
 import           Data.Functor.Identity          ( Identity )
 
 import           Binah.Core
@@ -136,3 +139,35 @@ instance MonadTIO m => MonadTIO (TaggedT m) where
 @-}
 instance MonadTIO m => MonadTIO (TaggedT m) where
   liftTIO x = liftT (liftTIO x)
+
+
+-- ** Properly polymorphic function for TaggedT
+
+{-@ ignore mapT @-}
+{-@
+mapT :: forall <inn :: Entity User -> Bool, out :: Entity User -> Bool>.
+  (a -> TaggedT<inn, out> m b) -> [a] -> TaggedT<inn, out> m [b]
+@-}
+mapT :: MonadTIO m => (a -> TaggedT m b) -> [a] -> TaggedT m [b]
+mapT = mapM
+
+{-@
+forT :: forall <inn :: Entity User -> Bool, out :: Entity User -> Bool>.
+[a] -> (a -> TaggedT<inn, out> _ b) -> TaggedT<inn, out> _ [b]
+@-}
+forT :: MonadTIO m => [a] -> (a -> TaggedT m b) -> TaggedT m [b]
+forT = flip mapT
+
+{-@
+assume whenT :: forall <inn :: Entity User -> Bool, out :: Entity User -> Bool>.
+  Bool -> TaggedT<inn, out> m () -> TaggedT<inn, out> m ()
+@-}
+whenT :: Applicative m => Bool -> TaggedT m () -> TaggedT m ()
+whenT = when
+
+{-@
+assume replicateT :: forall <source :: Entity User -> Bool, sink :: Entity User -> Bool>.
+  Int -> TaggedT<source, sink> m a -> TaggedT<source, sink> m [a]
+@-}
+replicateT :: Applicative m => Int -> TaggedT m a -> TaggedT m [a]
+replicateT = replicateM
