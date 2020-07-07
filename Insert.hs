@@ -23,10 +23,10 @@ assume insert :: forall < p :: Entity record -> Bool
   }
 
   { rec :: (Entity<p> record)
-      |- {v: (Entity<querypolicy p> User) | True} <: {v: (Entity<audience> User) | True}
+      |- {v: (Entity<querypolicy rec> User) | True} <: {v: (Entity<audience> User) | True}
   }
 
-  BinahRecord<p, insertpolicy, querypolicy> record -> TaggedT<{\_ -> True}, audience> _ (Key record)
+  BinahRecord<p, insertpolicy, querypolicy> record -> TaggedT<{\_ -> True}, audience> m (Key record)
 @-}
 insert
   :: ( MonadTIO m
@@ -52,11 +52,11 @@ assume insertMany :: forall < p :: Entity record -> Bool
   }
 
   { rec :: (Entity<p> record)
-      |- {v: (Entity<querypolicy p> User) | True} <: {v: (Entity<audience> User) | True}
+      |- {v: (Entity<querypolicy rec> User) | True} <: {v: (Entity<audience> User) | True}
   }
 
   [BinahRecord<p, insertpolicy, querypolicy> record]
-  -> TaggedT<{\_ -> True}, audience> _ [Key record]
+  -> TaggedT<{\_ -> True}, audience> m [Key record]
 @-}
 insertMany
   :: ( MonadTIO m
