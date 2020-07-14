@@ -109,6 +109,51 @@ forall < querypolicy :: Entity record -> Entity User -> Bool
 (!=.) :: PersistField typ => EntityFieldWrapper record typ -> typ -> Filter record
 (EntityFieldWrapper field) !=. value = Filter [field Persist.!=. value]
 
+
+{-@
+(<.) ::
+forall < querypolicy :: Entity record -> Entity User -> Bool
+       , selector :: Entity record -> typ -> Bool
+       , inverseselector :: typ -> Entity record -> Bool
+       , fieldfilter :: typ -> Bool
+       , filter :: Entity record -> Bool
+       , r :: typ -> Bool
+       , capability :: Entity record -> Bool
+       , updatepolicy :: Entity record -> Entity record -> Entity User -> Bool
+       >.
+  { row :: (Entity record), value :: typ<r> |- {field:(typ<selector row>) | field < value} <: typ<fieldfilter> }
+  { field :: typ<fieldfilter> |- {v:(Entity <inverseselector field> record) | True} <: {v:(Entity <filter> record) | True} }
+
+  EntityFieldWrapper<querypolicy, selector, inverseselector, capability, updatepolicy> record typ 
+  -> typ<r>
+  -> Filter<querypolicy, filter> record
+@-}
+(<.) :: PersistField typ => EntityFieldWrapper record typ -> typ -> Filter record
+(EntityFieldWrapper field) <. value = Filter [field Persist.<. value]
+
+{-@
+(>.) ::
+forall < querypolicy :: Entity record -> Entity User -> Bool
+       , selector :: Entity record -> typ -> Bool
+       , inverseselector :: typ -> Entity record -> Bool
+       , fieldfilter :: typ -> Bool
+       , filter :: Entity record -> Bool
+       , r :: typ -> Bool
+       , capability :: Entity record -> Bool
+       , updatepolicy :: Entity record -> Entity record -> Entity User -> Bool
+       >.
+  { row :: (Entity record), value :: typ<r> |- {field:(typ<selector row>) | field > value} <: typ<fieldfilter> }
+  { field :: typ<fieldfilter> |- {v:(Entity <inverseselector field> record) | True} <: {v:(Entity <filter> record) | True} }
+
+  EntityFieldWrapper<querypolicy, selector, inverseselector, capability, updatepolicy> record typ 
+  -> typ<r>
+  -> Filter<querypolicy, filter> record
+@-}
+
+(>.) :: PersistField typ => EntityFieldWrapper record typ -> typ -> Filter record
+(EntityFieldWrapper field) >. value = Filter [field Persist.>. value]
+
+
 {-@
 (<-.) ::
 forall < querypolicy :: Entity record -> Entity User -> Bool
