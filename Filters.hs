@@ -139,7 +139,6 @@ forall < querypolicy :: Entity record -> Entity User -> Bool
   -> typ
   -> Filter<querypolicy, {\_ -> True}> record
 @-}
-
 (>.) :: PersistField typ => EntityFieldWrapper record typ -> typ -> Filter record
 (EntityFieldWrapper field) >. value = Filter [field Persist.>. value]
 
