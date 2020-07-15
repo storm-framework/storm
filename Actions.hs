@@ -61,6 +61,27 @@ selectFirst filters = do
   backend <- ask
   liftTIO . TIO $ runReaderT (Persist.selectFirst (toPersistFilters filters) []) backend
 
+{-@ ignore count @-}
+{-@
+assume count :: forall < q :: Entity record -> Entity User -> Bool
+                       , r :: Entity record -> Bool
+                       , p :: Entity User -> Bool
+                       >.
+  { row :: (Entity <r> record) |- {v:(Entity <p> User) | True} <: {v:(Entity <q row> User) | True} }
+  Filter<q, r> record -> TaggedT<p, {\_ -> False}> _ Int
+@-}
+count
+  :: ( PersistQueryRead backend
+     , PersistRecordBackend record backend
+     , MonadReader backend m
+     , MonadTIO m
+     )
+  => Filter record
+  -> TaggedT m Int
+count filters = do
+  backend <- ask
+  liftTIO . TIO $ runReaderT (Persist.count (toPersistFilters filters)) backend
+
 {-@ ignore project @-}
 {-@
 assume project :: forall < policy :: Entity record -> Entity User -> Bool
@@ -120,11 +141,3 @@ projectList
   -> TaggedT m [typ]
 projectList (EntityFieldWrapper entityField) entities =
   pure $ map (getConst . Persist.fieldLens entityField Const) entities
-
-{-@
-assume printTo :: user:_ -> _ -> TaggedT<{\_ -> True}, {\viewer -> viewer == user}> _ ()
-@-}
-printTo :: MonadTIO m => Entity User -> String -> TaggedT m ()
-printTo user = liftTIO . TIO . putStrLn
-    -- . mconcat
-    -- $ ["[", Text.unpack . userName . Persist.entityVal $ user, "] ", str]
