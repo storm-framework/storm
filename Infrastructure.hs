@@ -13,7 +13,8 @@ import           Control.Monad                  ( when
                                                 , replicateM
                                                 )
 import           Data.Functor.Identity          ( Identity )
-
+import qualified Frankie.Log
+import           System.IO                      (stderr)
 import           Binah.Core
 import           Model
 
@@ -171,3 +172,6 @@ assume replicateT :: forall <source :: Entity User -> Bool, sink :: Entity User 
 @-}
 replicateT :: Applicative m => Int -> TaggedT m a -> TaggedT m [a]
 replicateT = replicateM
+
+instance (MonadTIO m) => Frankie.Log.MonadLog (TaggedT m) where
+  log level msg = liftTIO . TIO $ Frankie.Log.hLog True stderr level msg

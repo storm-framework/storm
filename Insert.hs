@@ -1,8 +1,8 @@
 {-# LANGUAGE GADTs #-}
 module Binah.Insert where
 
-
 import           Binah.Infrastructure
+import qualified Frankie.Log
 import           Control.Monad.Reader           ( MonadReader(..)
                                                 , runReaderT
                                                 )
@@ -43,7 +43,7 @@ insert record = do
 
 {-@ ignore insertMaybe @-}
 {-@
-assume insert :: forall < p :: Entity record -> Bool
+assume insertMaybe :: forall < p :: Entity record -> Bool
                         , insertpolicy :: Entity record -> Entity User -> Bool
                         , querypolicy  :: Entity record -> Entity User -> Bool
                         , audience :: Entity User -> Bool
@@ -70,8 +70,41 @@ insertMaybe record = do
   backend <- ask
   liftTIO . TIO $ runReaderT act  backend
   where
-    act = (Just <$> Persist.insert (persistentRecord record)) `catch` (\(SomeException e) -> return Nothing)
+    act = (Just <$> Persist.insert (persistentRecord record)) 
+            `catch` 
+              (\(SomeException e) -> return Nothing)
 
+{-@ ignore insertOrMsg @-}
+{-@
+assume insertOrMsg :: forall < p :: Entity record -> Bool
+                        , insertpolicy :: Entity record -> Entity User -> Bool
+                        , querypolicy  :: Entity record -> Entity User -> Bool
+                        , audience :: Entity User -> Bool
+                        >.
+  { rec :: (Entity<p> record)
+      |- {v: (Entity User) | v == currentUser} <: {v: (Entity<insertpolicy rec> User) | True}
+  }
+
+  { rec :: (Entity<p> record)
+      |- {v: (Entity<querypolicy p> User) | True} <: {v: (Entity<audience> User) | True}
+  }
+  String -> BinahRecord<p, insertpolicy, querypolicy> record -> TaggedT<{\_ -> True}, audience> _ (Maybe (Key record))
+@-}
+insertOrMsg
+  :: ( MonadTIO m
+     , Persist.PersistStoreWrite backend
+     , Persist.PersistRecordBackend record backend
+     , MonadReader backend m
+     )
+  => String 
+  -> BinahRecord record
+  -> TaggedT m (Maybe (Key record))
+insertOrMsg msg row = do 
+  res <- insertMaybe row 
+  case res of 
+    Nothing -> Frankie.Log.log Frankie.Log.ERROR msg
+    _       -> return ()
+  return res
 
 {-@ ignore insertMany @-}
 {-@
