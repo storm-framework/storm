@@ -61,6 +61,27 @@ selectFirst filters = do
   backend <- ask
   liftTIO . TIO $ runReaderT (Persist.selectFirst (toPersistFilters filters) []) backend
 
+{-@ ignore selectFirstOrCrash @-}
+{-@
+assume selectFirstOrCrash :: forall <q :: Entity record -> Entity User -> Bool, r1 :: Entity record -> Bool, r2 :: Entity record -> Bool, p :: Entity User -> Bool>.
+  { row :: record |- {v:(Entity <r1> record) | entityVal v == row} <: {v:(Entity <r2> record) | True} }
+  { row :: (Entity <r2> record) |- {v:(Entity <p> User) | True} <: {v:(Entity <q row> User) | True} }
+  Filter<q, r1> record -> TaggedT<p, {\_ -> False}> _ (Entity <r2> record)
+@-}
+selectFirstOrCrash
+  :: ( PersistQueryRead backend
+     , PersistRecordBackend record backend
+     , MonadReader backend m
+     , MonadTIO m
+     )
+  => Filter record
+  -> TaggedT m (Entity record)
+selectFirstOrCrash filters = do
+  resMb <- selectFirst filters
+  case resMb of
+    Nothing -> error "oh no! selectFirstOrCrash!"
+    Just res -> return res
+
 {-@ ignore count @-}
 {-@
 assume count :: forall < q :: Entity record -> Entity User -> Bool
