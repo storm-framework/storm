@@ -9,24 +9,24 @@ import           Control.Monad.Reader           ( MonadReader(..)
 import qualified Database.Persist              as Persist
 
 import           Binah.Core
-import           Model
 
 {-@ ignore insert @-}
 {-@
 assume insert :: forall < p :: Entity record -> Bool
-                        , insertpolicy :: Entity record -> Entity User -> Bool
-                        , querypolicy  :: Entity record -> Entity User -> Bool
-                        , audience :: Entity User -> Bool
+                        , insertpolicy :: Entity record -> user -> Bool
+                        , querypolicy  :: Entity record -> user -> Bool
+                        , audience :: user -> Bool
                         >.
   { rec :: (Entity<p> record)
-      |- {v: (Entity User) | v == currentUser} <: {v: (Entity<insertpolicy rec> User) | True}
+      |- {v: (user) | v == currentUser} <: {v: (user<insertpolicy rec>) | True}
   }
 
   { rec :: (Entity<p> record)
-      |- {v: (Entity<querypolicy rec> User) | True} <: {v: (Entity<audience> User) | True}
+      |- {v: (user<querypolicy rec>) | True} <: {v: (user<audience>) | True}
   }
 
-  BinahRecord<p, insertpolicy, querypolicy> record -> TaggedT<{\_ -> True}, audience> m (Key record)
+  BinahRecord<p, insertpolicy, querypolicy> user record
+  -> TaggedT<{\_ -> True}, audience> user m (Key record)
 @-}
 insert
   :: ( MonadTIO m
@@ -34,29 +34,29 @@ insert
      , Persist.PersistRecordBackend record backend
      , MonadReader backend m
      )
-  => BinahRecord record
-  -> TaggedT m (Key record)
-insert record = do
+  => BinahRecord user record
+  -> TaggedT user m (Key record)
+insert (BinahRecord record) = do
   backend <- ask
-  liftTIO . TIO $ runReaderT (Persist.insert (persistentRecord record)) backend
+  liftTIO . TIO $ runReaderT (Persist.insert record) backend
 
 {-@ ignore insertMany @-}
 {-@
 assume insertMany :: forall < p :: Entity record -> Bool
-                            , insertpolicy :: Entity record -> Entity User -> Bool
-                            , querypolicy  :: Entity record -> Entity User -> Bool
-                            , audience :: Entity User -> Bool
+                            , insertpolicy :: Entity record -> user -> Bool
+                            , querypolicy  :: Entity record -> user -> Bool
+                            , audience :: user -> Bool
                             >.
   { rec :: (Entity<p> record)
-      |- {v: (Entity User) | v == currentUser} <: {v: (Entity<insertpolicy rec> User) | True}
+      |- {v: (user) | v == currentUser} <: {v: (user<insertpolicy rec>) | True}
   }
 
   { rec :: (Entity<p> record)
-      |- {v: (Entity<querypolicy rec> User) | True} <: {v: (Entity<audience> User) | True}
+      |- {v: (user<querypolicy rec>) | True} <: {v: (user<audience>) | True}
   }
 
-  [BinahRecord<p, insertpolicy, querypolicy> record]
-  -> TaggedT<{\_ -> True}, audience> m [Key record]
+  [BinahRecord<p, insertpolicy, querypolicy> user record]
+  -> TaggedT<{\_ -> True}, audience> user m [Key record]
 @-}
 insertMany
   :: ( MonadTIO m
@@ -64,8 +64,8 @@ insertMany
      , Persist.PersistRecordBackend record backend
      , MonadReader backend m
      )
-  => [BinahRecord record]
-  -> TaggedT m [Key record]
+  => [BinahRecord user record]
+  -> TaggedT user m [Key record]
 insertMany records = do
   backend <- ask
-  liftTIO . TIO $ runReaderT (Persist.insertMany (map persistentRecord records)) backend
+  liftTIO . TIO $ runReaderT (Persist.insertMany (map (\(BinahRecord r) -> r) records)) backend

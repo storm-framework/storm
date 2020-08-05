@@ -29,8 +29,7 @@ import           Database.Persist.Sql           ( fromSqlKey
 import           Binah.Infrastructure
 import           Binah.Filters
 import           Binah.Frankie
-
-import           Model
+import           Binah.Core
 
 class TemplateData d where
   templateFile :: FilePath
@@ -59,12 +58,12 @@ getOrLoadTemplate searchDirs file = do
       Left err -> error $ "Error parsing template " ++ file ++ ": " ++ show err
 
 {-@ ignore renderTemplate @-}
-{-@ assume renderTemplate :: _ -> TaggedT<{\_ -> True}, {\_ -> False}> _ _ @-}
+{-@ assume renderTemplate :: _ -> TaggedT<{\_ -> True}, {\_ -> False}> user m Text @-}
 renderTemplate
-  :: forall d w m config
+  :: forall d w user m config
    . (MonadTIO m, MonadConfig config m, TemplateData d, HasTemplateCache config)
   => d
-  -> TaggedT m Text
+  -> TaggedT user m Text
 renderTemplate templateData = do
   template <- getOrLoadTemplate searchDirs file
   pure $ Mustache.substitute template (toMustache templateData)
