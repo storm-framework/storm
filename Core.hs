@@ -34,6 +34,6 @@ data EntityFieldWrapper user record typ = EntityFieldWrapper (EntityField record
                                  > = BinahRecord _
 @-}
 data BinahRecord user record = BinahRecord record
-{-@ data variance BinahRecord invariant invariant invariant invariant invariant @-}
+{-@ data variance BinahRecord invariant invariant covariant invariant invariant invariant @-}
 
 {-@ measure currentUser :: Int -> user @-}

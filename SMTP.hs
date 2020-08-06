@@ -27,28 +27,28 @@ import           Network.Mail.SMTP ( SMTPConnection
                                    )
 import qualified Network.Socket
 
+import           Binah.Core
 import           Binah.Infrastructure
-
 
 newtype SMTPError = SendError String deriving Show
 
-{-@ data Mail<sink :: user -> Bool > @-}
+{-@ data Mail user <sink :: user -> Bool> = Mail _ @-}
 {-@ data variance Mail covariant @-}
 data Mail user = Mail Mime.Mail
 
-{-@ data Address<sink :: user -> Bool> = Address _ @-}
+{-@ data Address user <sink :: user -> Bool> = Address _ @-}
 {-@ data variance Address covariant @-}
 data Address user = Address Mime.Address
 
 
 -- | Create mails and addresses
 
-{-@ assume publicAddress :: _ -> Address<{\_ -> True>}> user @-}
+{-@ assume publicAddress :: _ -> Address<{\_ -> True}> user @-}
 publicAddress :: T.Text -> Address user
 publicAddress addr = Address (Mime.Address Nothing addr)
 
 {-@ assume simpleMail' :: forall < p :: user -> Bool, q :: user -> Bool>.
-  Address<p> user -> Address<q> user -> Mail<q> user
+  Address<p> user -> Address<q> user -> _ -> _ -> Mail<q> user
 @-}
 simpleMail' :: Address user -> Address user -> T.Text -> LT.Text -> Mail user
 simpleMail' (Address from) (Address to) subject body =
