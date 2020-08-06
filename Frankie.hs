@@ -60,11 +60,11 @@ instance MonadController w m => MonadController w (TaggedT user m) where
 requestT :: MonadController w m => TaggedT user m (Request w)
 requestT = liftT request
 
-{-@ assume respondTagged :: _ -> TaggedT<{\_ -> True}, {\u -> u == currentUser}> user m a @-}
+{-@ assume respondTagged :: _ -> TaggedT<{\_ -> True}, {\u -> u == currentUser 0}> user m a @-}
 respondTagged :: MonadController w m => Response -> TaggedT user m a
 respondTagged x = lift (respond x)
 
-{-@ assume requireAuthUser :: m {u:(user) | u == currentUser} @-}
+{-@ assume requireAuthUser :: m {u:(user) | u == currentUser 0} @-}
 requireAuthUser :: MonadAuth (user) m => m (user)
 requireAuthUser = requireAuth
 
