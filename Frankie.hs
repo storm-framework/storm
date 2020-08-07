@@ -44,41 +44,40 @@ import           Binah.Infrastructure
 import           Binah.Filters
 import           Binah.Actions
 
-import           Model
 import           Text.Read                      ( readMaybe )
 
 -- TODO: Fill this out
 {-
-instance MonadController s w m => MonadController s w (TaggedT m) where
+instance MonadController s w m => MonadController s w (TaggedT user m) where
   respond :: Response -> TaggedT<{\_ -> True}, {\u -> u == currentUser}> m a
 @-}
-instance MonadController w m => MonadController w (TaggedT m) where
+instance MonadController w m => MonadController w (TaggedT user m) where
   request = lift request
   respond = respondTagged
   liftWeb x = lift (liftWeb x)
 
-{-@ requestT :: TaggedT<{\_ -> True}, {\_ -> False}> m (Request w) @-}
-requestT :: MonadController w m => TaggedT m (Request w)
+{-@ requestT :: TaggedT<{\_ -> True}, {\_ -> False}> user m (Request w) @-}
+requestT :: MonadController w m => TaggedT user m (Request w)
 requestT = liftT request
 
-{-@ assume respondTagged :: _ -> TaggedT<{\_ -> True}, {\u -> u == currentUser}> _ _ @-}
-respondTagged :: MonadController w m => Response -> TaggedT m a
+{-@ assume respondTagged :: _ -> TaggedT<{\_ -> True}, {\u -> u == currentUser 0}> user m a @-}
+respondTagged :: MonadController w m => Response -> TaggedT user m a
 respondTagged x = lift (respond x)
 
-{-@ assume requireAuthUser :: m {u:(Entity User) | u == currentUser} @-}
-requireAuthUser :: MonadAuth (Entity User) m => m (Entity User)
+{-@ assume requireAuthUser :: m {u:(user) | u == currentUser 0} @-}
+requireAuthUser :: MonadAuth (user) m => m (user)
 requireAuthUser = requireAuth
 
-{-@ getConfigT :: TaggedT<{\_ -> True}, {\_ -> False}> m config @-}
-getConfigT :: MonadConfig config m => TaggedT m config
+{-@ getConfigT :: TaggedT<{\_ -> True}, {\_ -> False}> user m config @-}
+getConfigT :: MonadConfig config m => TaggedT user m config
 getConfigT = liftT getConfig
 
 -- TODO: Check why this type is not being exported
 {-
-instance MonadConfig config m => MonadConfig config (TaggedT m) where
+instance MonadConfig config m => MonadConfig config (TaggedT user m) where
   getConfig :: TaggedT<{\_ -> True}, {\_ -> False}> m config
 @-}
-instance MonadConfig config m => MonadConfig config (TaggedT m) where
+instance MonadConfig config m => MonadConfig config (TaggedT user m) where
   getConfig = getConfigT
 
 instance MonadController w m => MonadController w (ReaderT r m) where
@@ -116,7 +115,7 @@ instance WebMonad TIO where
 instance MonadTIO m => MonadTIO (ControllerT m) where
   liftTIO x = lift (liftTIO x)
 
--- initWithT :: (TaggedT m () -> TaggedT (ControllerT w) ()) -> Frankie.FrankieConfigMode w m ()
+-- initWithT :: (TaggedT user m () -> TaggedT (ControllerT w) ()) -> Frankie.FrankieConfigMode w m ()
 initWithT initializeFun = initWith $ unTag . initializeFun
 
 toWaiApplication :: Application TIO -> Wai.Application
@@ -134,8 +133,8 @@ trimPath :: [T.Text] -> [T.Text]
 trimPath path = if (not . null $ path) && T.null (last path) then init path else path
 
 {-@ ignore parseForm @-}
-{-@ parseForm :: TaggedT<{\_ -> True }, {\_ -> False}> _ _ @-}
-parseForm :: (MonadController TIO m, MonadTIO m) => TaggedT m [(T.Text, T.Text)]
+{-@ parseForm :: TaggedT<{\_ -> True }, {\_ -> False}> user m _ @-}
+parseForm :: (MonadController TIO m, MonadTIO m) => TaggedT user m [(T.Text, T.Text)]
 parseForm = do
   req    <- request
   parsed <- liftTIO $ TIO $ Wai.parseRequestBody Wai.lbsBackEnd $ unRequestTIO req
