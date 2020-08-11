@@ -2,13 +2,15 @@
 module Binah.Insert where
 
 
-import           Binah.Infrastructure
+import           Control.Exception              ( SomeException(..) )
+import           Control.Monad.Catch            ( catch )
 import           Control.Monad.Reader           ( MonadReader(..)
                                                 , runReaderT
                                                 )
 import qualified Database.Persist              as Persist
 
 import           Binah.Core
+import           Binah.Infrastructure
 
 {-@ ignore insert @-}
 {-@
@@ -69,3 +71,37 @@ insertMany
 insertMany records = do
   backend <- ask
   liftTIO . TIO $ runReaderT (Persist.insertMany (map (\(BinahRecord r) -> r) records)) backend
+
+{-@ ignore insertMaybe @-}
+{-@
+assume insertMaybe :: forall < p :: Entity record -> Bool
+                             , insertpolicy :: Entity record -> user -> Bool
+                             , querypolicy  :: Entity record -> user -> Bool
+                             , audience :: user -> Bool
+                             >.
+  { rec :: (Entity<p> record)
+      |- {v: user | v == currentUser} <: {v: user<insertpolicy rec> | True}
+  }
+
+  { rec :: (Entity<p> record)
+      |- {v: user<querypolicy p> | True} <: {v: user<audience> | True}
+  }
+
+  BinahRecord<p, insertpolicy, querypolicy> user record
+  -> TaggedT<{\_ -> True}, audience> user m (Maybe (Key record))
+@-}
+insertMaybe
+  :: ( MonadTIO m
+     , Persist.PersistStoreWrite backend
+     , Persist.PersistRecordBackend record backend
+     , MonadReader backend m
+     )
+  => BinahRecord user record
+  -> TaggedT user m (Maybe (Key record))
+insertMaybe (BinahRecord record) = do
+  backend <- ask
+  liftTIO . TIO $ runReaderT act backend
+  where
+    act = (Just <$> Persist.insert record)
+            `catch`
+              (\(SomeException e) -> return Nothing)

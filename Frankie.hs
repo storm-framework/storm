@@ -31,10 +31,11 @@ import qualified Network.Wai                   as Wai
 import qualified Network.Wai.Handler.Warp      as Wai
 import qualified Network.Wai.Parse             as Wai
 import           Data.Bifunctor                 ( bimap )
-
+import           System.IO                      ( stderr )
 import           Prelude                 hiding ( log )
 
 import           Frankie
+import           Frankie.Log
 import           Frankie.Config
 import           Frankie.Auth
 import qualified Frankie.Auth
@@ -142,3 +143,6 @@ parseForm = do
 
 instance (Persist.ToBackendKey Persist.SqlBackend record, Typeable record) => Parseable (Key record) where
   parseText = fmap Persist.toSqlKey . readMaybe . T.unpack
+
+instance (MonadTIO m) => Frankie.Log.MonadLog (TaggedT user m) where
+  log level msg = liftTIO . TIO $ Frankie.Log.hLog True stderr level msg
