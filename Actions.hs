@@ -151,12 +151,13 @@ projectList
 projectList (EntityFieldWrapper entityField) entities =
   pure $ map (getConst . Persist.fieldLens entityField Const) entities
 
+{-@ ignore selectFirstOrCrash @-}
 {-@
-selectFirstOrCrash :: forall < q  :: Entity record -> user -> Bool
-                             , r1 :: Entity record -> Bool
-                             , r2 :: Entity record -> Bool
-                             , p  :: user -> Bool
-                             >.
+assume selectFirstOrCrash :: forall < q  :: Entity record -> user -> Bool
+                                    , r1 :: Entity record -> Bool
+                                    , r2 :: Entity record -> Bool
+                                    , p  :: user -> Bool
+                                    >.
   { row :: record |- {v:(Entity <r1> record) | entityVal v == row} <: {v:(Entity <r2> record) | True} }
   { row :: (Entity <r2> record) |- {v:user<p> | True} <: {v:user<q row> | True} }
   Filter<q, r1> user record -> TaggedT<p, {\_ -> False}> user m (Entity <r2> record)

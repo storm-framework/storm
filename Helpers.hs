@@ -231,7 +231,7 @@ insertOrMsg :: forall < p :: Entity record -> Bool
                       , audience :: user -> Bool
                       >.
   { rec :: (Entity<p> record)
-      |- {v: user | v == currentUser} <: {v: user<insertpolicy rec> | True}
+      |- {v: user | v == currentUser 0} <: {v: user<insertpolicy rec> | True}
   }
 
   { rec :: (Entity<p> record)
@@ -253,6 +253,6 @@ insertOrMsg
 insertOrMsg msg row = do
   res <- insertMaybe row
   case res of
-    Nothing -> Frankie.Log.log Frankie.Log.ERROR msg
+    Nothing -> logT Frankie.Log.ERROR msg
     _       -> return ()
   return res

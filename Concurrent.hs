@@ -7,7 +7,8 @@ where
 
 import           Control.Concurrent
 
+import           Binah.Core
 import           Binah.Infrastructure
 
 forkTIO :: MonadTIO m => TIO () -> m ThreadId
-forkTIO = liftTIO . TIO . forkIO . runTIO
+forkTIO act = liftTIO (TIO (forkIO (runTIO act)))

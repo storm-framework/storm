@@ -13,6 +13,7 @@ module Binah.Frankie
   , initWithT
   , getConfigT
   , requestT
+  , logT
   , module Frankie
   )
 where
@@ -146,3 +147,7 @@ instance (Persist.ToBackendKey Persist.SqlBackend record, Typeable record) => Pa
 
 instance (MonadTIO m) => Frankie.Log.MonadLog (TaggedT user m) where
   log level msg = liftTIO . TIO $ Frankie.Log.hLog True stderr level msg
+
+{-@ assume logT :: LogLevel -> String -> TaggedT<{\_ -> True}, {\_ -> False}> user m () @-}
+logT :: MonadTIO m => LogLevel -> String -> TaggedT user m ()
+logT = log

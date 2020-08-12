@@ -80,7 +80,7 @@ assume insertMaybe :: forall < p :: Entity record -> Bool
                              , audience :: user -> Bool
                              >.
   { rec :: (Entity<p> record)
-      |- {v: user | v == currentUser} <: {v: user<insertpolicy rec> | True}
+      |- {v: user | v == currentUser 0} <: {v: user<insertpolicy rec> | True}
   }
 
   { rec :: (Entity<p> record)
