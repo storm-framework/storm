@@ -223,36 +223,3 @@ selectFirstOr response filters = do
     case maybeRecord of
         Just record -> return record
         Nothing     -> respondTagged response
-
-{-@
-insertOrMsg :: forall < p :: Entity record -> Bool
-                      , insertpolicy :: Entity record -> user -> Bool
-                      , querypolicy  :: Entity record -> user -> Bool
-                      , audience :: user -> Bool
-                      >.
-  { rec :: (Entity<p> record)
-      |- {v: user | v == currentUser 0} <: {v: user<insertpolicy rec> | True}
-  }
-
-  { rec :: (Entity<p> record)
-      |- {v: user<querypolicy p> | True} <: {v: user<audience> | True}
-  }
-  String
-  -> BinahRecord<p, insertpolicy, querypolicy> user record
-  -> TaggedT<{\_ -> True}, audience> user m (Maybe (Key record))
-@-}
-insertOrMsg
-  :: ( MonadTIO m
-     , DB.PersistStoreWrite backend
-     , DB.PersistRecordBackend record backend
-     , MonadReader backend m
-     )
-  => String
-  -> BinahRecord user record
-  -> TaggedT user m (Maybe (Key record))
-insertOrMsg msg row = do
-  res <- insertMaybe row
-  case res of
-    Nothing -> logT Frankie.Log.ERROR msg
-    _       -> return ()
-  return res
