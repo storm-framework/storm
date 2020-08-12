@@ -84,7 +84,7 @@ assume insertMaybe :: forall < p :: Entity record -> Bool
   }
 
   { rec :: (Entity<p> record)
-      |- {v: user<querypolicy p> | True} <: {v: user<audience> | True}
+      |- {v: user<querypolicy rec> | True} <: {v: user<audience> | True}
   }
 
   BinahRecord<p, insertpolicy, querypolicy> user record
