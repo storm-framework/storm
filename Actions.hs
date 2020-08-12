@@ -150,3 +150,28 @@ projectList
   -> TaggedT user m [typ]
 projectList (EntityFieldWrapper entityField) entities =
   pure $ map (getConst . Persist.fieldLens entityField Const) entities
+
+{-@ ignore selectFirstOrCrash @-}
+{-@
+assume selectFirstOrCrash :: forall < q  :: Entity record -> user -> Bool
+                                    , r1 :: Entity record -> Bool
+                                    , r2 :: Entity record -> Bool
+                                    , p  :: user -> Bool
+                                    >.
+  { row :: record |- {v:(Entity <r1> record) | entityVal v == row} <: {v:(Entity <r2> record) | True} }
+  { row :: (Entity <r2> record) |- {v:user<p> | True} <: {v:user<q row> | True} }
+  Filter<q, r1> user record -> TaggedT<p, {\_ -> False}> user m (Entity <r2> record)
+@-}
+selectFirstOrCrash
+  :: ( PersistQueryRead backend
+     , PersistRecordBackend record backend
+     , MonadReader backend m
+     , MonadTIO m
+     )
+  => Filter user record
+  -> TaggedT user m (Entity record)
+selectFirstOrCrash filters = do
+  resMb <- selectFirst filters
+  case resMb of
+    Nothing -> error "oh no! selectFirstOrCrash!"
+    Just res -> return res

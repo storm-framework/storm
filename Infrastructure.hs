@@ -2,6 +2,8 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
+{-@ LIQUID "--no-pattern-inline" @-}
+
 module Binah.Infrastructure where
 
 import           Control.Monad.Trans.Class      ( MonadTrans(..) )
@@ -181,3 +183,16 @@ assume replicateT :: forall <source :: user -> Bool, sink :: user -> Bool>.
 @-}
 replicateT :: Applicative m => Int -> TaggedT user m a -> TaggedT user m [a]
 replicateT = replicateM
+
+{-@
+assume mapMaybeT :: forall <source :: user -> Bool, sink :: user -> Bool>.
+  (a -> TaggedT<source, sink> user m (Maybe b)) -> [a] -> TaggedT<source, sink> user m [b]
+@-}
+mapMaybeT :: MonadTIO m => (a -> TaggedT user m (Maybe b)) -> [a] -> TaggedT user m [b]
+mapMaybeT _ []     = return []
+mapMaybeT f (a:as) = do
+  b  <- f a
+  bs <- mapMaybeT f as
+  case b of
+    Just b  -> return (b : bs)
+    Nothing -> return bs

@@ -9,6 +9,7 @@ module Binah.SMTP
   , publicAddress
   , simpleMail'
   , renderAndSend
+  , sendMailWithLoginSTARTTLS
   )
 where
 
@@ -86,6 +87,20 @@ renderAndSend
   -> TaggedT user m (Either SMTPError ())
 renderAndSend conn (Mail mail) = TaggedT $ liftTIO $ TIO $ do
   res <- try $ SMTP.renderAndSend conn mail
+  case res of
+    Left (SomeException e) -> return (Left (SendError (show e)))
+    Right _                -> return (Right ())
+
+
+sendMailWithLoginSTARTTLS
+  :: MonadTIO m
+  => Network.Socket.HostName
+  -> UserName
+  -> Password
+  -> Mail user
+  -> TaggedT user m (Either SMTPError ())
+sendMailWithLoginSTARTTLS host user pass (Mail mail) = TaggedT $ liftTIO $ TIO $ do
+  res <- try $ SMTP.sendMailWithLoginSTARTTLS host user pass mail
   case res of
     Left (SomeException e) -> return (Left (SendError (show e)))
     Right _                -> return (Right ())
