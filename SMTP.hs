@@ -53,7 +53,7 @@ publicAddress addr = Address (Mime.Address Nothing addr)
 @-}
 simpleMail' :: Address user -> Address user -> T.Text -> LT.Text -> Mail user
 simpleMail' (Address to) (Address from) subject body =
-  Mail $ Mime.simpleMail' from to subject body
+  Mail $ Mime.simpleMail' to from subject body
 
 -- | Connection
 
