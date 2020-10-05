@@ -1,0 +1,14 @@
+resolver: lts-15.4
+
+compiler: ghc-8.10.1
+
+packages:
+- .
+
+extra-deps:
+- github: PLSysSec/frankie
+  commit: b9ee2c0f7667025d0d0ac3a43ded43d1d1d63c28
+- smtp-mail-0.3.0.0
+# - lens-4.19.2
+
+
