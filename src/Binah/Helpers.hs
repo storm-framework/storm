@@ -31,14 +31,14 @@ import           Binah.Insert
                    , p :: Entity record -> Bool
                    , label :: user -> Bool
                    >.
-  {row :: (Entity<p> record) |- {v:(user<label>) | True} <: {v:(user<policy1 row>) | True}}
-  {row :: (Entity<p> record) |- {v:(user<label>) | True} <: {v:(user<policy2 row>) | True}}
-
-  ( EntityFieldWrapper<policy1, selector1, flippedselector1> user record typ1
-  , EntityFieldWrapper<policy2, selector2, flippedselector2> user record typ2
-  )
-  -> row:(Entity<p> record)
-  -> TaggedT<label, {\_ -> False}> user m (typ1<selector1 row>, typ2<selector2 row>)
+                    {row :: (Entity<p> record) |- {v:(user<label>) | True} <: {v:(user<policy1 row>) | True}}
+                    {row :: (Entity<p> record) |- {v:(user<label>) | True} <: {v:(user<policy2 row>) | True}}
+                  
+                    ( EntityFieldWrapper<policy1, selector1, flippedselector1> user record typ1
+                    , EntityFieldWrapper<policy2, selector2, flippedselector2> user record typ2
+                    )
+                    -> row:(Entity<p> record)
+                    -> TaggedT<label, {\_ -> False}> user m (typ1<selector1 row>, typ2<selector2 row>)
 @-}
 project2
     :: (Monad m, PersistEntity record)
@@ -62,16 +62,16 @@ project2 (field1, field2) record = do
                    , p :: Entity record -> Bool
                    , label :: user -> Bool
                    >.
-  {row :: (Entity<p> record) |- {v:(user<label>) | True} <: {v:(user<policy1 row>) | True}}
-  {row :: (Entity<p> record) |- {v:(user<label>) | True} <: {v:(user<policy2 row>) | True}}
-  {row :: (Entity<p> record) |- {v:(user<label>) | True} <: {v:(user<policy3 row>) | True}}
-
-  ( EntityFieldWrapper<policy1, selector1, flippedselector1> user record typ1
-  , EntityFieldWrapper<policy2, selector2, flippedselector2> user record typ2
-  , EntityFieldWrapper<policy3, selector3, flippedselector3> user record typ3
-  )
-  -> row:(Entity<p> record)
-  -> TaggedT<label, {\_ -> False}> user m (typ1<selector1 row>, typ2<selector2 row>, typ3<selector3 row>)
+                    {row :: (Entity<p> record) |- {v:(user<label>) | True} <: {v:(user<policy1 row>) | True}}
+                    {row :: (Entity<p> record) |- {v:(user<label>) | True} <: {v:(user<policy2 row>) | True}}
+                    {row :: (Entity<p> record) |- {v:(user<label>) | True} <: {v:(user<policy3 row>) | True}}
+                  
+                    ( EntityFieldWrapper<policy1, selector1, flippedselector1> user record typ1
+                    , EntityFieldWrapper<policy2, selector2, flippedselector2> user record typ2
+                    , EntityFieldWrapper<policy3, selector3, flippedselector3> user record typ3
+                    )
+                    -> row:(Entity<p> record)
+                    -> TaggedT<label, {\_ -> False}> user m (typ1<selector1 row>, typ2<selector2 row>, typ3<selector3 row>)
 @-}
 project3
     :: (Monad m, PersistEntity record)
@@ -99,17 +99,17 @@ project3 (field1, field2, field3) record = do
                        , p :: Entity record -> Bool
                        , label :: user -> Bool
                        >.
-  { row :: (Entity <p> record) |- {v:(user<label>) | True} <: {v:(user<policy1 row>) | True} }
-  { row :: (Entity <p> record) |- typ1<selector1 row> <: typ1<q1> }
-
-  { row :: (Entity <p> record) |- {v:(user<label>) | True} <: {v:(user<policy2 row>) | True} }
-  { row :: (Entity <p> record) |- typ2<selector2 row> <: typ2<q2> }
-
-  ( EntityFieldWrapper<policy1, selector1, inverseselector1> user record typ1
-  , EntityFieldWrapper<policy2, selector2, inverseselector2> user record typ2
-  )
-  -> [(Entity <p> record)]
-  -> TaggedT<label, {\_ -> False}> user m [(typ1<q1>, typ2<q2>)]
+                       { row :: (Entity <p> record) |- {v:(user<label>) | True} <: {v:(user<policy1 row>) | True} }
+                       { row :: (Entity <p> record) |- typ1<selector1 row> <: typ1<q1> }
+                     
+                       { row :: (Entity <p> record) |- {v:(user<label>) | True} <: {v:(user<policy2 row>) | True} }
+                       { row :: (Entity <p> record) |- typ2<selector2 row> <: typ2<q2> }
+                     
+                       ( EntityFieldWrapper<policy1, selector1, inverseselector1> user record typ1
+                       , EntityFieldWrapper<policy2, selector2, inverseselector2> user record typ2
+                       )
+                       -> [(Entity <p> record)]
+                       -> TaggedT<label, {\_ -> False}> user m [(typ1<q1>, typ2<q2>)]
 @-}
 projectList2
     :: (Monad m, PersistEntity record)
@@ -136,21 +136,21 @@ projectList2 (field1, field2) records = do
                        , p :: Entity record -> Bool
                        , label :: user -> Bool
                        >.
-  { row :: (Entity <p> record) |- {v:(user<label>) | True} <: {v:(user<policy1 row>) | True} }
-  { row :: (Entity <p> record) |- typ1<selector1 row> <: typ1<q1> }
-
-  { row :: (Entity <p> record) |- {v:(user<label>) | True} <: {v:(user<policy2 row>) | True} }
-  { row :: (Entity <p> record) |- typ2<selector2 row> <: typ2<q2> }
-
-  { row :: (Entity <p> record) |- {v:(user<label>) | True} <: {v:(user<policy3 row>) | True} }
-  { row :: (Entity <p> record) |- typ3<selector3 row> <: typ3<q3> }
-
-  ( EntityFieldWrapper<policy1, selector1, inverseselector1> user record typ1
-  , EntityFieldWrapper<policy2, selector2, inverseselector2> user record typ2
-  , EntityFieldWrapper<policy3, selector3, inverseselector3> user record typ3
-  )
-  -> [(Entity <p> record)]
-  -> TaggedT<label, {\_ -> False}> user m [(typ1<q1>, typ2<q2>, typ3<q3>)]
+                      { row :: (Entity <p> record) |- {v:(user<label>) | True} <: {v:(user<policy1 row>) | True} }
+                      { row :: (Entity <p> record) |- typ1<selector1 row> <: typ1<q1> }
+                    
+                      { row :: (Entity <p> record) |- {v:(user<label>) | True} <: {v:(user<policy2 row>) | True} }
+                      { row :: (Entity <p> record) |- typ2<selector2 row> <: typ2<q2> }
+                    
+                      { row :: (Entity <p> record) |- {v:(user<label>) | True} <: {v:(user<policy3 row>) | True} }
+                      { row :: (Entity <p> record) |- typ3<selector3 row> <: typ3<q3> }
+                    
+                      ( EntityFieldWrapper<policy1, selector1, inverseselector1> user record typ1
+                      , EntityFieldWrapper<policy2, selector2, inverseselector2> user record typ2
+                      , EntityFieldWrapper<policy3, selector3, inverseselector3> user record typ3
+                      )
+                      -> [(Entity <p> record)]
+                      -> TaggedT<label, {\_ -> False}> user m [(typ1<q1>, typ2<q2>, typ3<q3>)]
 @-}
 projectList3
     :: (Monad m, PersistEntity record)
