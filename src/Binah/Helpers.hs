@@ -22,8 +22,7 @@ import           Binah.Infrastructure
 import           Binah.Filters
 import           Binah.Insert
 
--- TODO:ASSUME
-{-@ assume project2 :: forall < policy1 :: Entity record -> user -> Bool
+{-@ project2 :: forall < policy1 :: Entity record -> user -> Bool
                    , policy2 :: Entity record -> user -> Bool
                    , selector1 :: Entity record -> typ1 -> Bool
                    , selector2 :: Entity record -> typ2 -> Bool
@@ -51,8 +50,7 @@ project2 (field1, field2) record = do
     field2 <- project field2 record
     return (field1, field2)
 
--- TODO:ASSUME
-{-@ assume project3 :: forall < policy1 :: Entity record -> user -> Bool
+{-@ project3 :: forall < policy1 :: Entity record -> user -> Bool
                    , policy2 :: Entity record -> user -> Bool
                    , policy3 :: Entity record -> user -> Bool
                    , selector1 :: Entity record -> typ1 -> Bool
@@ -89,8 +87,7 @@ project3 (field1, field2, field3) record = do
     field3 <- project field3 record
     return (field1, field2, field3)
 
--- TODO:ASSUME
-{-@ assume projectList2 :: forall < policy1 :: Entity record -> user -> Bool
+{-@ projectList2 :: forall < policy1 :: Entity record -> user -> Bool
                        , policy2 :: Entity record -> user -> Bool
                        , selector1 :: Entity record -> typ1 -> Bool
                        , selector2 :: Entity record -> typ2 -> Bool
@@ -124,8 +121,7 @@ projectList2 (field1, field2) records = do
     fields2 <- projectList field2 records
     return $ zip fields1 fields2
 
--- TODO:ASSUME
-{-@ assume projectList3 :: forall < policy1 :: Entity record -> user -> Bool
+{-@ projectList3 :: forall < policy1 :: Entity record -> user -> Bool
                        , policy2 :: Entity record -> user -> Bool
                        , policy3 :: Entity record -> user -> Bool
                        , selector1 :: Entity record -> typ1 -> Bool

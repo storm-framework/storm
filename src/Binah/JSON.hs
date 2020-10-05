@@ -56,7 +56,7 @@ notFoundJSON = errorResponse status404 Nothing
 --------------------------------------------------------------------------------
 
 -- TODO:ASSUME
-{-@ assume decodeBody :: TaggedT<{\_ -> True}, {\v -> v == currentUser 0}> _ _ _ @-}
+{-@ decodeBody :: TaggedT<{\_ -> True}, {\v -> v == currentUser 0}> _ _ _ @-}
 decodeBody :: (FromJSON a, MonadTIO m, MonadController TIO m) => TaggedT user m a
 decodeBody = do
   req  <- requestT
@@ -64,3 +64,10 @@ decodeBody = do
   case eitherDecode body of
     Left  s -> respondError status400 (Just s)
     Right a -> return a
+
+
+
+
+
+
+
