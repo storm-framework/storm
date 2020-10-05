@@ -18,7 +18,7 @@ description: Please see the README on GitHub at <https://github.com/binah-framew
 
 dependencies:
   - aeson
-  - base >= 4.7 && < 5
+  # - base >= 4.7 && < 5
   - base64-bytestring
   - bytestring
   - either
@@ -41,6 +41,9 @@ dependencies:
   - network
   - scrypt
   - MonadRandom
+  - liquid-base
+  - liquidhaskell >= 0.8.10
 
 library:
   source-dirs: src
+  ghc-options: -fplugin=LiquidHaskell

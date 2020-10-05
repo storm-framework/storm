@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 9f898faa90cfe7c8fb1c70dbd83a4c4b7b7e0852baaf1246a8ffc170ec1b3d51
+-- hash: 5ee057ab2de41ff1f83d4670ac5e1957987fa454a56f54c094feba253a6b282b
 
 name:           binah
 version:        0.1.0.0
@@ -48,15 +48,17 @@ library
       Paths_binah
   hs-source-dirs:
       src
+  ghc-options: -fplugin=LiquidHaskell
   build-depends:
       MonadRandom
     , aeson
-    , base >=4.7 && <5
     , base64-bytestring
     , bytestring
     , either
     , exceptions
     , frankie
+    , liquid-base
+    , liquidhaskell >=0.8.10
     , mime-mail
     , monad-time
     , mtl

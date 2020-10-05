@@ -55,7 +55,8 @@ notFoundJSON = errorResponse status404 Nothing
 -- | Decoding
 --------------------------------------------------------------------------------
 
-{-@ decodeBody :: TaggedT<{\_ -> True}, {\v -> v == currentUser 0}> _ _ _ @-}
+-- TODO:ASSUME
+{-@ assume decodeBody :: TaggedT<{\_ -> True}, {\v -> v == currentUser 0}> _ _ _ @-}
 decodeBody :: (FromJSON a, MonadTIO m, MonadController TIO m) => TaggedT user m a
 decodeBody = do
   req  <- requestT

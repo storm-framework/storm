@@ -16,15 +16,14 @@ import           Database.Persist               ( PersistEntity )
 import qualified Database.Persist              as DB
 import           Binah.Frankie
 import           Frankie.Log
-
 import           Binah.Actions
 import           Binah.Core
 import           Binah.Infrastructure
 import           Binah.Filters
 import           Binah.Insert
 
-{-@
-project2 :: forall < policy1 :: Entity record -> user -> Bool
+-- TODO:ASSUME
+{-@ assume project2 :: forall < policy1 :: Entity record -> user -> Bool
                    , policy2 :: Entity record -> user -> Bool
                    , selector1 :: Entity record -> typ1 -> Bool
                    , selector2 :: Entity record -> typ2 -> Bool
@@ -52,8 +51,8 @@ project2 (field1, field2) record = do
     field2 <- project field2 record
     return (field1, field2)
 
-{-@
-project3 :: forall < policy1 :: Entity record -> user -> Bool
+-- TODO:ASSUME
+{-@ assume project3 :: forall < policy1 :: Entity record -> user -> Bool
                    , policy2 :: Entity record -> user -> Bool
                    , policy3 :: Entity record -> user -> Bool
                    , selector1 :: Entity record -> typ1 -> Bool
@@ -90,8 +89,8 @@ project3 (field1, field2, field3) record = do
     field3 <- project field3 record
     return (field1, field2, field3)
 
-{-@
-projectList2 :: forall < policy1 :: Entity record -> user -> Bool
+-- TODO:ASSUME
+{-@ assume projectList2 :: forall < policy1 :: Entity record -> user -> Bool
                        , policy2 :: Entity record -> user -> Bool
                        , selector1 :: Entity record -> typ1 -> Bool
                        , selector2 :: Entity record -> typ2 -> Bool
@@ -125,8 +124,8 @@ projectList2 (field1, field2) records = do
     fields2 <- projectList field2 records
     return $ zip fields1 fields2
 
-{-@
-projectList3 :: forall < policy1 :: Entity record -> user -> Bool
+-- TODO:ASSUME
+{-@ assume projectList3 :: forall < policy1 :: Entity record -> user -> Bool
                        , policy2 :: Entity record -> user -> Bool
                        , policy3 :: Entity record -> user -> Bool
                        , selector1 :: Entity record -> typ1 -> Bool
