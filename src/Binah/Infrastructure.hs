@@ -33,9 +33,8 @@ data TaggedT user m a = TaggedT { unTag :: m a }
 liftT :: Monad m => m a -> TaggedT user m a
 liftT = TaggedT
 
-{-@
-assume mapTaggedT :: forall <label :: user -> Bool, clear :: user -> Bool>.
-_ -> TaggedT<label, clear> user _ _ -> TaggedT<label, clear> user _ _
+{-@ assume mapTaggedT :: forall <label :: user -> Bool, clear :: user -> Bool>.
+                           _ -> TaggedT<label, clear> user _ _ -> TaggedT<label, clear> user _ _
 @-}
 mapTaggedT :: (m a -> n b) -> TaggedT user m a -> TaggedT user n b
 mapTaggedT f x = TaggedT (f (unTag x))
@@ -163,9 +162,8 @@ mapT :: forall <source :: user -> Bool, sink :: user -> Bool>.
 mapT :: MonadTIO m => (a -> TaggedT user m b) -> [a] -> TaggedT user m [b]
 mapT = mapM
 
-{-@
-forT :: forall <source :: user -> Bool, sink :: user -> Bool>.
-[a] -> (a -> TaggedT<source, sink> user m b) -> TaggedT<source, sink> user m [b]
+{-@ forT :: forall <source :: user -> Bool, sink :: user -> Bool>.
+              [a] -> (a -> TaggedT<source, sink> user m b) -> TaggedT<source, sink> user m [b]
 @-}
 forT :: MonadTIO m => [a] -> (a -> TaggedT user m b) -> TaggedT user m [b]
 forT = flip mapT

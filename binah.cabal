@@ -1,0 +1,78 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.33.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 5ee057ab2de41ff1f83d4670ac5e1957987fa454a56f54c094feba253a6b282b
+
+name:           binah
+version:        0.1.0.0
+synopsis:       Framework for building web applications with compile-time security guarantees
+description:    Please see the README on GitHub at <https://github.com/binah-framework/binah/blob/main/README.md>
+category:       Web
+homepage:       https://github.com/binah-framework/binah#readme
+bug-reports:    https://github.com/binah-framework/binah/issues
+author:         Nico Lehmann
+maintainer:     nlehmann@eng.ucsd.edu
+copyright:      2020 Nico Lehmann
+license:        MIT
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    ChangeLog.md
+
+source-repository head
+  type: git
+  location: https://github.com/binah-framework/binah
+
+library
+  exposed-modules:
+      Binah.Actions
+      Binah.Concurrent
+      Binah.Core
+      Binah.Crypto
+      Binah.Filters
+      Binah.Frankie
+      Binah.Helpers
+      Binah.Infrastructure
+      Binah.Insert
+      Binah.JSON
+      Binah.Random
+      Binah.SMTP
+      Binah.Templates
+      Binah.Time
+      Binah.Updates
+  other-modules:
+      Paths_binah
+  hs-source-dirs:
+      src
+  ghc-options: -fplugin=LiquidHaskell
+  build-depends:
+      MonadRandom
+    , aeson
+    , base64-bytestring
+    , bytestring
+    , either
+    , exceptions
+    , frankie
+    , liquid-base
+    , liquidhaskell >=0.8.10
+    , mime-mail
+    , monad-time
+    , mtl
+    , mustache
+    , network
+    , persistent
+    , persistent-sqlite
+    , persistent-template
+    , scrypt
+    , smtp-mail
+    , text
+    , transformers
+    , unordered-containers
+    , wai
+    , wai-extra
+    , warp
+  default-language: Haskell2010

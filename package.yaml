@@ -1,0 +1,49 @@
+name: binah
+version: 0.1.0.0
+github: "binah-framework/binah"
+license: MIT
+author: "Nico Lehmann"
+maintainer: "nlehmann@eng.ucsd.edu"
+copyright: "2020 Nico Lehmann"
+
+extra-source-files:
+  - README.md
+  - ChangeLog.md
+
+# Metadata used when publishing your package
+synopsis: Framework for building web applications with compile-time security guarantees
+category:  Web
+
+description: Please see the README on GitHub at <https://github.com/binah-framework/binah/blob/main/README.md>
+
+dependencies:
+  - aeson
+  # - base >= 4.7 && < 5
+  - base64-bytestring
+  - bytestring
+  - either
+  - frankie
+  - mtl
+  - mustache
+  - persistent
+  - persistent-template
+  - persistent-sqlite
+  - text
+  - transformers
+  - unordered-containers
+  - wai
+  - wai-extra
+  - warp
+  - monad-time
+  - exceptions
+  - smtp-mail
+  - mime-mail
+  - network
+  - scrypt
+  - MonadRandom
+  - liquid-base
+  - liquidhaskell >= 0.8.10
+
+library:
+  source-dirs: src
+  ghc-options: -fplugin=LiquidHaskell

@@ -49,7 +49,7 @@ publicAddress :: T.Text -> Address user
 publicAddress addr = Address (Mime.Address Nothing addr)
 
 {-@ assume simpleMail' :: forall < p :: user -> Bool, q :: user -> Bool>.
-  Address<p> user -> Address<q> user -> _ -> _ -> Mail<q> user
+      Address<p> user -> Address<q> user -> _ -> _ -> Mail<q> user
 @-}
 simpleMail' :: Address user -> Address user -> T.Text -> LT.Text -> Mail user
 simpleMail' (Address to) (Address from) subject body =
@@ -78,7 +78,7 @@ login conn user pass = liftTIO $ TIO $ SMTP.login conn user pass
 -- FIXME: The source label shouldn't be True because the exception could contain
 -- part of the email's content.
 {-@ assume renderAndSend :: forall <sink :: user -> Bool>.
-  SMTPConnection -> Mail<sink> user -> TaggedT<{\_ -> True}, sink> user m (Either SMTPError ())
+      SMTPConnection -> Mail<sink> user -> TaggedT<{\_ -> True}, sink> user m (Either SMTPError ())
 @-}
 renderAndSend
   :: MonadTIO m

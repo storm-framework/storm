@@ -1,0 +1,28 @@
+resolver: nightly-2020-06-25
+
+compiler: ghc-8.10.2
+
+allow-newer: true
+
+packages:
+- .
+
+extra-deps:
+- github: PLSysSec/frankie
+  commit: b9ee2c0f7667025d0d0ac3a43ded43d1d1d63c28
+- smtp-mail-0.3.0.0
+
+# LH stuff
+- text-format-0.3.2
+- Diff-0.3.4
+- github: ucsd-progsys/liquid-fixpoint
+  commit: 58e3123f41dedd6082177303bb4b6bf4349edf46
+
+- github: ucsd-progsys/liquidhaskell
+  commit: ad7f0cf5b86cb62fa855f3392bfa34f65225c4ed
+  subdirs:
+      - .
+      - liquid-base
+      - liquid-ghc-prim
+
+  # commit: 1cab7e3758c7f1793a19eea2579a5e856348b459
