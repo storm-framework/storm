@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 5ee057ab2de41ff1f83d4670ac5e1957987fa454a56f54c094feba253a6b282b
+-- hash: d25753bbd7de032267d1b8b41a546b772a79a9d21543d8fdb7758709262a45c8
 
 name:           binah
 version:        0.1.0.0
@@ -48,7 +48,6 @@ library
       Paths_binah
   hs-source-dirs:
       src
-  ghc-options: -fplugin=LiquidHaskell
   build-depends:
       MonadRandom
     , aeson

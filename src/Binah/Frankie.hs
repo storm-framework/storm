@@ -14,6 +14,7 @@ module Binah.Frankie
   , getConfigT
   , requestT
   , logT
+  , waiRequest
   , module Frankie
   )
 where
@@ -113,6 +114,9 @@ instance WebMonad TIO where
               $ Wai.setServerName "frankie"
               $ Wai.defaultSettings
     in  Wai.runSettings settings $ toWaiApplication app
+
+waiRequest :: Request TIO -> Wai.Request
+waiRequest = unRequestTIO 
 
 instance MonadTIO m => MonadTIO (ControllerT m) where
   liftTIO x = lift (liftTIO x)

@@ -5,12 +5,15 @@
 
 module Binah.JSON
   ( respondJSON
+  , respondFile
   , jsonResponse
   , emptyResponse
   , respondError
   , errorResponse
   , notFoundJSON
   , decodeBody
+  , decodeFiles
+  , FileInfo (..)
   )
   where
 
@@ -20,6 +23,10 @@ import           Binah.Core
 import           Binah.Infrastructure
 import           Binah.Frankie
 import           Binah.Filters
+import           Network.Wai.Parse
+import qualified Data.ByteString.Lazy as LBS
+import qualified Data.ByteString      as BS
+
 
 {-@ respondJSON :: Status -> a -> TaggedT<{\_ -> True}, {\v -> v == currentUser 0}> _ _ _ @-}
 respondJSON :: (ToJSON a, MonadController w m) => Status -> a -> TaggedT user m b
@@ -28,6 +35,9 @@ respondJSON status a = respondTagged (jsonResponse status a)
 {-@ respondError :: Status -> Maybe String -> TaggedT<{\_ -> True}, {\v -> v == currentUser 0}> _ _ _ @-}
 respondError :: (MonadController w m) => Status -> Maybe String -> TaggedT user m a
 respondError status error = respondTagged (errorResponse status error)
+
+respondFile :: (MonadController w m) => Status -> FileType -> Blob -> TaggedT user m a
+respondFile status typ blob = respondTagged (blobResponse status typ blob)
 
 --------------------------------------------------------------------------------
 -- | Responses
@@ -51,6 +61,12 @@ errorResponse status error = Response status defaultHeaders (encodeError error)
 notFoundJSON :: Response
 notFoundJSON = errorResponse status404 Nothing
 
+blobResponse :: Status -> FileType -> LBS.ByteString -> Response
+blobResponse status typ blob = Response status [(hContentType, typ)] blob
+
+type FileType = BS.ByteString
+type Blob     = LBS.ByteString
+
 --------------------------------------------------------------------------------
 -- | Decoding
 --------------------------------------------------------------------------------
@@ -65,6 +81,10 @@ decodeBody = do
     Right a -> return a
 
 
+decodeFiles :: (MonadTIO m, MonadController TIO m) => TaggedT user m ([Param], [File LBS.ByteString]) 
+decodeFiles = do
+  req <- requestT
+  liftTIO $ TIO $ parseRequestBody lbsBackEnd (waiRequest req)
 
 
 
