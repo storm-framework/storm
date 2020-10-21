@@ -36,6 +36,7 @@ respondJSON status a = respondTagged (jsonResponse status a)
 respondError :: (MonadController w m) => Status -> Maybe String -> TaggedT user m a
 respondError status error = respondTagged (errorResponse status error)
 
+{-@ respondFile :: Status -> FileType -> Blob -> TaggedT<{\_ -> True}, {\v -> v == currentUser 0}> _ _ _ @-}
 respondFile :: (MonadController w m) => Status -> FileType -> Blob -> TaggedT user m a
 respondFile status typ blob = respondTagged (blobResponse status typ blob)
 
@@ -80,7 +81,7 @@ decodeBody = do
     Left  s -> respondError status400 (Just s)
     Right a -> return a
 
-
+{-@ decodeFiles :: TaggedT<{\_ -> True}, {\v -> v == currentUser 0}> _ _ _ @-}
 decodeFiles :: (MonadTIO m, MonadController TIO m) => TaggedT user m ([Param], [File LBS.ByteString]) 
 decodeFiles = do
   req <- requestT
