@@ -85,7 +85,7 @@ decodeBody = do
 decodeFiles :: (MonadTIO m, MonadController TIO m) => TaggedT user m ([Param], [File LBS.ByteString]) 
 decodeFiles = do
   req <- requestT
-  liftTIO   $ TIO $ parseRequestBodyEx opts lbsBackEnd (waiRequest req)
+  parseRequestBodyExT opts lbsBackEnd req
   where 
     opts    = setMaxRequestFileSize maxSize defaultParseRequestBodyOptions
     maxSize = 1024 * 1024 -- 1Mb

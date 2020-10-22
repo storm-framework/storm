@@ -15,6 +15,7 @@ module Binah.Frankie
   , requestT
   , logT
   , waiRequest
+  , parseRequestBodyExT
   , module Frankie
   )
 where
@@ -155,3 +156,7 @@ instance (MonadTIO m) => Frankie.Log.MonadLog (TaggedT user m) where
 {-@ assume logT :: LogLevel -> String -> TaggedT<{\_ -> True}, {\_ -> False}> user m () @-}
 logT :: MonadTIO m => LogLevel -> String -> TaggedT user m ()
 logT = log
+
+{-@ assume parseRequestBodyExT :: _ -> _ -> _ -> TaggedT<{\_ -> True}, {\_ -> False}> _ _ _ @-}
+parseRequestBodyExT :: (MonadTIO m) => Wai.ParseRequestBodyOptions -> Wai.BackEnd y -> Request TIO -> TaggedT user m ([Wai.Param], [Wai.File y])
+parseRequestBodyExT opts backend r = liftTIO . TIO $ Wai.parseRequestBodyEx opts backend (unRequestTIO r)
