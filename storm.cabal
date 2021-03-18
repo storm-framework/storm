@@ -1,18 +1,16 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
---
--- hash: 5ee057ab2de41ff1f83d4670ac5e1957987fa454a56f54c094feba253a6b282b
 
-name:           binah
+name:           storm
 version:        0.1.0.0
 synopsis:       Framework for building web applications with compile-time security guarantees
-description:    Please see the README on GitHub at <https://github.com/binah-framework/binah/blob/main/README.md>
+description:    Please see the README on GitHub at <https://github.com/storm-framework/storm/blob/main/README.md>
 category:       Web
-homepage:       https://github.com/binah-framework/binah#readme
-bug-reports:    https://github.com/binah-framework/binah/issues
+homepage:       https://github.com/storm-framework/storm#readme
+bug-reports:    https://github.com/storm-framework/storm/issues
 author:         Nico Lehmann
 maintainer:     nlehmann@eng.ucsd.edu
 copyright:      2020 Nico Lehmann
@@ -25,27 +23,27 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/binah-framework/binah
+  location: https://github.com/storm-framework/storm
 
 library
   exposed-modules:
-      Binah.Actions
-      Binah.Concurrent
-      Binah.Core
-      Binah.Crypto
-      Binah.Filters
-      Binah.Frankie
-      Binah.Helpers
-      Binah.Infrastructure
-      Binah.Insert
-      Binah.JSON
-      Binah.Random
-      Binah.SMTP
-      Binah.Templates
-      Binah.Time
-      Binah.Updates
+      Storm.Actions
+      Storm.Concurrent
+      Storm.Core
+      Storm.Crypto
+      Storm.Filters
+      Storm.Frankie
+      Storm.Helpers
+      Storm.Infrastructure
+      Storm.Insert
+      Storm.JSON
+      Storm.Random
+      Storm.SMTP
+      Storm.Templates
+      Storm.Time
+      Storm.Updates
   other-modules:
-      Paths_binah
+      Paths_storm
   hs-source-dirs:
       src
   ghc-options: -fplugin=LiquidHaskell

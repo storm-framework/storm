@@ -5,7 +5,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module Binah.Frankie
+module Storm.Frankie
   ( MonadController(..)
   , respondTagged
   , requireAuthUser
@@ -41,10 +41,10 @@ import           Frankie.Config
 import           Frankie.Auth
 import qualified Frankie.Auth
 
-import           Binah.Core
-import           Binah.Infrastructure
-import           Binah.Filters
-import           Binah.Actions
+import           Storm.Core
+import           Storm.Infrastructure
+import           Storm.Filters
+import           Storm.Actions
 
 import           Text.Read                      ( readMaybe )
 

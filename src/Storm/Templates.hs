@@ -4,7 +4,7 @@
 {-# LANGUAGE ScopedTypeVariables, AllowAmbiguousTypes #-}
 {-# LANGUAGE FlexibleContexts #-}
 
-module Binah.Templates
+module Storm.Templates
   ( HasTemplateCache(..)
   , TemplateData(..)
   , renderTemplate
@@ -26,10 +26,10 @@ import qualified Database.Persist              as Persist
 import           Database.Persist.Sql           ( fromSqlKey
                                                 , SqlBackend
                                                 )
-import           Binah.Infrastructure
-import           Binah.Filters
-import           Binah.Frankie
-import           Binah.Core
+import           Storm.Infrastructure
+import           Storm.Filters
+import           Storm.Frankie
+import           Storm.Core
 
 class TemplateData d where
   templateFile :: FilePath

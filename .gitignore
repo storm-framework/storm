@@ -1,6 +1,6 @@
 .stack-work/
 .liquid/
-/binah-basic.cabal
+/storm-basic.cabal
 
 *.dyn_hi
 *.dyn_o

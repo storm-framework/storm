@@ -1,11 +1,11 @@
 -- | Combinators and data types for Persistent-style filters.
 
-module Binah.Filters where
+module Storm.Filters where
 
 import           Database.Persist               ( PersistField )
 import qualified Database.Persist              as Persist
 
-import           Binah.Core
+import           Storm.Core
 
 -- * Data types
 {-@

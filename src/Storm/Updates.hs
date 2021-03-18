@@ -2,7 +2,7 @@
 
 {-@ LIQUID "--no-pattern-inline" @-}
 
-module Binah.Updates
+module Storm.Updates
   ( assign
   , updateWhere
   , combine
@@ -15,9 +15,9 @@ import           Database.Persist               ( PersistRecordBackend
                                                 )
 import qualified Database.Persist              as Persist
 
-import           Binah.Core
-import           Binah.Filters
-import           Binah.Infrastructure
+import           Storm.Core
+import           Storm.Filters
+import           Storm.Infrastructure
 
 {-@
 data Update user record < visibility :: Entity record -> user -> Bool

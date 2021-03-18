@@ -1,4 +1,4 @@
-# Changelog for binah
+# Changelog for storm
 
 ## Unreleased changes
 
