@@ -1,6 +1,6 @@
 -- | Functionality that needs to be loaded before checking the Models file.
 
-module Binah.Core ( Entity, Key, EntityFieldWrapper(..), BinahRecord(..) ) where
+module Storm.Core ( Entity, Key, EntityFieldWrapper(..), StormRecord(..) ) where
 
 import Database.Persist (Entity, Key, EntityField)
 
@@ -28,12 +28,12 @@ data EntityFieldWrapper user record typ < querypolicy :: Entity record -> user -
 data EntityFieldWrapper user record typ = EntityFieldWrapper (EntityField record typ)
 {-@ data variance EntityFieldWrapper invariant covariant covariant invariant invariant invariant invariant invariant @-}
 
-{-@ data BinahRecord user record < p :: Entity record -> Bool
+{-@ data StormRecord user record < p :: Entity record -> Bool
                                  , insertpolicy :: Entity record -> user -> Bool
                                  , querypolicy  :: Entity record -> user -> Bool
-                                 > = BinahRecord _
+                                 > = StormRecord _
 @-}
-data BinahRecord user record = BinahRecord record
-{-@ data variance BinahRecord invariant invariant covariant invariant invariant invariant @-}
+data StormRecord user record = StormRecord record
+{-@ data variance StormRecord invariant invariant covariant invariant invariant invariant @-}
 
 {-@ measure currentUser :: Int -> user @-}

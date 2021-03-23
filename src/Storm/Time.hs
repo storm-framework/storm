@@ -1,9 +1,9 @@
-module Binah.Time where
+module Storm.Time where
 
 import           Control.Monad.Time             ( MonadTime(..) )
 
-import           Binah.Core
-import           Binah.Infrastructure
+import           Storm.Core
+import           Storm.Infrastructure
 
 instance MonadTime TIO where
   currentTime = TIO currentTime

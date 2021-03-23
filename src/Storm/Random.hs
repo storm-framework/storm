@@ -1,9 +1,9 @@
-module Binah.Random where
+module Storm.Random where
 
 import qualified Control.Monad.Random          as Random
 
-import           Binah.Core
-import           Binah.Infrastructure
+import           Storm.Core
+import           Storm.Infrastructure
 
 instance Random.MonadRandom TIO where
   getRandom   = TIO Random.getRandom

@@ -1,5 +1,5 @@
 {-# LANGUAGE GADTs #-}
-module Binah.Insert where
+module Storm.Insert where
 
 
 import           Control.Exception              ( SomeException(..) )
@@ -9,8 +9,8 @@ import           Control.Monad.Reader           ( MonadReader(..)
                                                 )
 import qualified Database.Persist              as Persist
 
-import           Binah.Core
-import           Binah.Infrastructure
+import           Storm.Core
+import           Storm.Infrastructure
 
 {-@ ignore insert @-}
 {-@
@@ -27,7 +27,7 @@ assume insert :: forall < p :: Entity record -> Bool
       |- {v: (user<querypolicy rec>) | True} <: {v: (user<audience>) | True}
   }
 
-  BinahRecord<p, insertpolicy, querypolicy> user record
+  StormRecord<p, insertpolicy, querypolicy> user record
   -> TaggedT<{\_ -> True}, audience> user m (Key record)
 @-}
 insert
@@ -36,9 +36,9 @@ insert
      , Persist.PersistRecordBackend record backend
      , MonadReader backend m
      )
-  => BinahRecord user record
+  => StormRecord user record
   -> TaggedT user m (Key record)
-insert (BinahRecord record) = do
+insert (StormRecord record) = do
   backend <- ask
   liftTIO . TIO $ runReaderT (Persist.insert record) backend
 
@@ -57,7 +57,7 @@ assume insertMany :: forall < p :: Entity record -> Bool
       |- {v: (user<querypolicy rec>) | True} <: {v: (user<audience>) | True}
   }
 
-  [BinahRecord<p, insertpolicy, querypolicy> user record]
+  [StormRecord<p, insertpolicy, querypolicy> user record]
   -> TaggedT<{\_ -> True}, audience> user m [Key record]
 @-}
 insertMany
@@ -66,11 +66,11 @@ insertMany
      , Persist.PersistRecordBackend record backend
      , MonadReader backend m
      )
-  => [BinahRecord user record]
+  => [StormRecord user record]
   -> TaggedT user m [Key record]
 insertMany records = do
   backend <- ask
-  liftTIO . TIO $ runReaderT (Persist.insertMany (map (\(BinahRecord r) -> r) records)) backend
+  liftTIO . TIO $ runReaderT (Persist.insertMany (map (\(StormRecord r) -> r) records)) backend
 
 {-@ ignore insertMaybe @-}
 {-@
@@ -87,7 +87,7 @@ assume insertMaybe :: forall < p :: Entity record -> Bool
       |- {v: user<querypolicy rec> | True} <: {v: user<audience> | True}
   }
 
-  BinahRecord<p, insertpolicy, querypolicy> user record
+  StormRecord<p, insertpolicy, querypolicy> user record
   -> TaggedT<{\_ -> True}, audience> user m (Maybe (Key record))
 @-}
 insertMaybe
@@ -96,9 +96,9 @@ insertMaybe
      , Persist.PersistRecordBackend record backend
      , MonadReader backend m
      )
-  => BinahRecord user record
+  => StormRecord user record
   -> TaggedT user m (Maybe (Key record))
-insertMaybe (BinahRecord record) = do
+insertMaybe (StormRecord record) = do
   backend <- ask
   liftTIO . TIO $ runReaderT act backend
   where

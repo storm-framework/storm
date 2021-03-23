@@ -2,7 +2,7 @@
 {-# LANGUAGE GADTs #-}
 {-@ LIQUID "--no-pattern-inline" @-}
 
-module Binah.Helpers where
+module Storm.Helpers where
 
 import           Control.Monad.Reader           ( MonadReader(..) )
 import           Data.Text                      ( Text
@@ -14,13 +14,13 @@ import           Database.Persist.Sql           ( fromSqlKey
                                                 )
 import           Database.Persist               ( PersistEntity )
 import qualified Database.Persist              as DB
-import           Binah.Frankie
+import           Storm.Frankie
 import           Frankie.Log
-import           Binah.Actions
-import           Binah.Core
-import           Binah.Infrastructure
-import           Binah.Filters
-import           Binah.Insert
+import           Storm.Actions
+import           Storm.Core
+import           Storm.Infrastructure
+import           Storm.Filters
+import           Storm.Insert
 
 {-@ project2 :: forall < policy1 :: Entity record -> user -> Bool
                    , policy2 :: Entity record -> user -> Bool

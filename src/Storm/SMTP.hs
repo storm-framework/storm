@@ -1,4 +1,4 @@
-module Binah.SMTP
+module Storm.SMTP
   ( SMTPConnection
   , UserName
   , Password
@@ -28,8 +28,8 @@ import           Network.Mail.SMTP ( SMTPConnection
                                    )
 import qualified Network.Socket
 
-import           Binah.Core
-import           Binah.Infrastructure
+import           Storm.Core
+import           Storm.Infrastructure
 
 newtype SMTPError = SendError String deriving Show
 

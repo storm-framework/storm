@@ -1,4 +1,4 @@
-module Binah.Crypto
+module Storm.Crypto
   ( encryptPassTIO'
   , module Crypto.Scrypt
   )
@@ -6,8 +6,8 @@ where
 
 import           Crypto.Scrypt
 
-import           Binah.Core
-import           Binah.Infrastructure
+import           Storm.Core
+import           Storm.Infrastructure
 
 
 encryptPassTIO' :: MonadTIO m => Pass -> m EncryptedPass

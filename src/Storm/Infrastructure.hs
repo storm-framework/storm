@@ -4,7 +4,7 @@
 
 {-@ LIQUID "--no-pattern-inline" @-}
 
-module Binah.Infrastructure where
+module Storm.Infrastructure where
 
 import           Control.Monad.Trans.Class      ( MonadTrans(..) )
 import           Control.Monad.IO.Class         ( MonadIO(..) )
@@ -16,7 +16,7 @@ import           Control.Monad                  ( when
                                                 )
 import           Data.Functor.Identity          ( Identity )
 
-import           Binah.Core
+import           Storm.Core
 
 -- * Definitions
 data TIO a = TIO { runTIO :: IO a }

@@ -3,7 +3,7 @@
 
 {-@ LIQUID "--no-pattern-inline" @-}
 
-module Binah.JSON
+module Storm.JSON
   ( respondJSON
   , jsonResponse
   , emptyResponse
@@ -16,10 +16,10 @@ module Binah.JSON
 
 import           Data.Aeson
 
-import           Binah.Core
-import           Binah.Infrastructure
-import           Binah.Frankie
-import           Binah.Filters
+import           Storm.Core
+import           Storm.Infrastructure
+import           Storm.Frankie
+import           Storm.Filters
 
 {-@ respondJSON :: Status -> a -> TaggedT<{\_ -> True}, {\v -> v == currentUser 0}> _ _ _ @-}
 respondJSON :: (ToJSON a, MonadController w m) => Status -> a -> TaggedT user m b

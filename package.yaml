@@ -1,6 +1,6 @@
-name: binah
+name: storm
 version: 0.1.0.0
-github: "binah-framework/binah"
+github: "storm-framework/storm"
 license: MIT
 author: "Nico Lehmann"
 maintainer: "nlehmann@eng.ucsd.edu"
@@ -14,7 +14,7 @@ extra-source-files:
 synopsis: Framework for building web applications with compile-time security guarantees
 category:  Web
 
-description: Please see the README on GitHub at <https://github.com/binah-framework/binah/blob/main/README.md>
+description: Please see the README on GitHub at <https://github.com/storm-framework/storm/blob/main/README.md>
 
 dependencies:
   - aeson

@@ -2,7 +2,7 @@
 
 {-# LANGUAGE GADTs #-}
 
-module Binah.Actions where
+module Storm.Actions where
 
 import           Data.Functor.Const             ( Const(..) )
 import           Control.Monad.Reader           ( MonadReader(..)
@@ -16,9 +16,9 @@ import qualified Database.Persist              as Persist
 import qualified Data.Text                     as Text
 import           Data.Text                      ( Text )
 
-import           Binah.Core
-import           Binah.Infrastructure
-import           Binah.Filters
+import           Storm.Core
+import           Storm.Infrastructure
+import           Storm.Filters
 
 
 {-@ ignore selectList @-}
