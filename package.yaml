@@ -41,9 +41,10 @@ dependencies:
   - network
   - scrypt
   - MonadRandom
+  - esqueleto
   - liquid-base
-  - liquidhaskell >= 0.8.10
+# - liquidhaskell >= 0.8.10
 
 library:
   source-dirs: src
-  ghc-options: -fplugin=LiquidHaskell
+#  ghc-options: -fplugin=LiquidHaskell

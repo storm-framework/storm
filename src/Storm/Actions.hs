@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 -- | The various user-accesible primitive operations for interacting with sensitive data.
 
 {-# LANGUAGE GADTs #-}
@@ -13,8 +14,9 @@ import           Database.Persist               ( PersistQueryRead
                                                 , PersistEntity
                                                 )
 import qualified Database.Persist              as Persist
-import qualified Data.Text                     as Text
-import           Data.Text                      ( Text )
+import qualified Database.Esqueleto            as E
+-- import qualified Data.Text                     as Text
+-- import           Data.Text                      ( Text )
 
 import           Storm.Core
 import           Storm.Infrastructure
@@ -150,3 +152,50 @@ projectList
   -> TaggedT user m [typ]
 projectList (EntityFieldWrapper entityField) entities =
   pure $ map (getConst . Persist.fieldLens entityField Const) entities
+
+----------------------------------------------------------------------------- 
+-- Experimenting with JOIN
+----------------------------------------------------------------------------- 
+
+-- mkJoin :: (PersistEntity val1, PersistEntity val2, MonadIO m, BackendCompatible SqlBackend (PersistEntityBackend val1), BackendCompatible SqlBackend (PersistEntityBackend val2), BackendCompatible SqlBackend backend, PersistQueryRead backend, PersistUniqueRead backend, PersistField typ) 
+--        => EntityField val1 typ -> EntityField val2 typ -> ReaderT backend m [(Entity val1, Entity val2)]
+
+
+joinFields 
+  :: ( PersistQueryRead backend
+     , PersistRecordBackend row1 backend
+     , PersistRecordBackend row2 backend
+     , MonadReader backend m
+     , MonadTIO m
+     , E.PersistUniqueRead backend
+     , E.PersistField ty
+     , E.BackendCompatible E.SqlBackend backend
+     , E.BackendCompatible E.SqlBackend (E.BaseBackend backend)
+     )
+  => EntityFieldWrapper user row1 ty 
+  -> EntityFieldWrapper user row2 ty 
+  -> TaggedT user m [(Entity row1, Entity row2)]
+joinFields (EntityFieldWrapper f1) (EntityFieldWrapper f2) = do
+  backend <- ask
+  liftTIO . TIO $ runReaderT act backend
+  where
+    act = E.select $ E.from $ \(r1 `E.InnerJoin` r2) -> do
+            E.on $ r1 E.^. f1 E.==. r2 E.^. f2
+            return (r1, r2)
+
+
+{- 
+
+ From: https://www.yesodweb.com/book/sql-joins
+
+ runDB
+           $ E.select
+           $ E.from $ \(blog `E.InnerJoin` author) -> do
+                E.on $ blog ^. BlogAuthor E.==. author ^. AuthorId
+                return
+                    ( blog   ^. BlogId
+                    , blog   ^. BlogTitle
+                    , author ^. AuthorName
+                    )
+
+ -}
