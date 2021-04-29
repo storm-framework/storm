@@ -14,6 +14,7 @@ import           Database.Persist               ( PersistQueryRead
                                                 , PersistEntity
                                                 )
 import qualified Database.Persist              as Persist
+-- import qualified Database.Persist.Query        as PQ
 import qualified Database.Esqueleto            as E
 -- import qualified Data.Text                     as Text
 -- import           Data.Text                      ( Text )
@@ -156,12 +157,7 @@ projectList (EntityFieldWrapper entityField) entities =
 ----------------------------------------------------------------------------- 
 -- Experimenting with JOIN
 ----------------------------------------------------------------------------- 
-
--- mkJoin :: (PersistEntity val1, PersistEntity val2, MonadIO m, BackendCompatible SqlBackend (PersistEntityBackend val1), BackendCompatible SqlBackend (PersistEntityBackend val2), BackendCompatible SqlBackend backend, PersistQueryRead backend, PersistUniqueRead backend, PersistField typ) 
---        => EntityField val1 typ -> EntityField val2 typ -> ReaderT backend m [(Entity val1, Entity val2)]
-
-
-joinFields 
+joinWhere
   :: ( PersistQueryRead backend
      , PersistRecordBackend row1 backend
      , PersistRecordBackend row2 backend
@@ -173,29 +169,61 @@ joinFields
      , E.BackendCompatible E.SqlBackend (E.BaseBackend backend)
      )
   => EntityFieldWrapper user row1 ty 
-  -> EntityFieldWrapper user row2 ty 
+  -> EntityFieldWrapper user row2 ty
+  -> Filter user row1
   -> TaggedT user m [(Entity row1, Entity row2)]
-joinFields (EntityFieldWrapper f1) (EntityFieldWrapper f2) = do
+joinWhere (EntityFieldWrapper f1) (EntityFieldWrapper f2) q1 = do
   backend <- ask
   liftTIO . TIO $ runReaderT act backend
   where
     act = E.select $ E.from $ \(r1 `E.InnerJoin` r2) -> do
             E.on $ r1 E.^. f1 E.==. r2 E.^. f2
+            E.where_ (filterToSqlExpr q1 r1)
             return (r1, r2)
 
+joinWhereEq 
+  :: ( PersistQueryRead backend
+     , PersistRecordBackend row1 backend
+     , PersistRecordBackend row2 backend
+     , MonadReader backend m
+     , MonadTIO m
+     , E.PersistUniqueRead backend
+     , E.PersistField ty
+     , E.BackendCompatible E.SqlBackend backend
+     , E.BackendCompatible E.SqlBackend (E.BaseBackend backend)
+     )
+  => EntityFieldWrapper user row1 ty 
+  -> EntityFieldWrapper user row2 ty
+  -> EntityFieldWrapper user row1 ty 
+  -> ty
+  -> TaggedT user m [(Entity row1, Entity row2)]
+joinWhereEq (EntityFieldWrapper f1) (EntityFieldWrapper f2) (EntityFieldWrapper f1') v1' = do
+  backend <- ask
+  liftTIO . TIO $ runReaderT act backend
+  where
+    act = E.select $ E.from $ \(r1 `E.InnerJoin` r2) -> do
+            E.on $ r1 E.^. f1 E.==. r2 E.^. f2
+            -- IDEALLY, take a `Filter` q1 and E.where_ (_fixme (toPersistFilters q1))
+            -- https://github.com/bitemyapp/esqueleto/issues/247
+            E.where_ (r1 E.^. f1' E.==. E.val v1') 
+            return (r1, r2)
 
-{- 
-
- From: https://www.yesodweb.com/book/sql-joins
-
- runDB
-           $ E.select
-           $ E.from $ \(blog `E.InnerJoin` author) -> do
-                E.on $ blog ^. BlogAuthor E.==. author ^. AuthorId
-                return
-                    ( blog   ^. BlogId
-                    , blog   ^. BlogTitle
-                    , author ^. AuthorName
-                    )
-
- -}
+filterToSqlExpr 
+  :: (PersistEntity row)
+  => Filter user row -> E.SqlExpr (E.Entity row) -> E.SqlExpr (E.Value Bool)
+filterToSqlExpr (Filter fs) row = go (Persist.FilterAnd fs) 
+  where
+    -- go :: Persist.Filter row -> E.SqlExpr (E.Value Bool)
+    go (Persist.FilterAnd fs) = foldr (E.&&.) (E.val True)  (go <$> fs)
+    go (Persist.FilterOr fs)  = foldr (E.||.) (E.val False) (go <$> fs) 
+    go (Persist.Filter fld (Persist.FilterValue val) o) = op o (row E.^.fld) (E.val val)
+    op Persist.Eq = (E.==.)
+    op Persist.Ne = (E.!=.)
+    op Persist.Lt = (E.<.)
+    op Persist.Le = (E.<=.)
+    op Persist.Gt = (E.>.)
+    op Persist.Ge = (E.>=.)
+    
+    -- go (Persist.Filter fld (Persist.FilterValue val) Persist.Eq) = row E.^.fld E.==. E.val val
+    -- go 
+-- From: https://www.yesodweb.com/book/sql-joins
