@@ -14,10 +14,7 @@ import           Database.Persist               ( PersistQueryRead
                                                 , PersistEntity
                                                 )
 import qualified Database.Persist              as Persist
--- import qualified Database.Persist.Query        as PQ
 import qualified Database.Esqueleto            as E
--- import qualified Data.Text                     as Text
--- import           Data.Text                      ( Text )
 
 import           Storm.Core
 import           Storm.Infrastructure
@@ -181,7 +178,7 @@ joinWhere (EntityFieldWrapper f1) (EntityFieldWrapper f2) q1 = do
             E.where_ (filterToSqlExpr q1 r1)
             return (r1, r2)
 
-joinWhereEq 
+joinWhereFldEq 
   :: ( PersistQueryRead backend
      , PersistRecordBackend row1 backend
      , PersistRecordBackend row2 backend
@@ -197,7 +194,7 @@ joinWhereEq
   -> EntityFieldWrapper user row1 ty 
   -> ty
   -> TaggedT user m [(Entity row1, Entity row2)]
-joinWhereEq (EntityFieldWrapper f1) (EntityFieldWrapper f2) (EntityFieldWrapper f1') v1' = do
+joinWhereFldEq (EntityFieldWrapper f1) (EntityFieldWrapper f2) (EntityFieldWrapper f1') v1' = do
   backend <- ask
   liftTIO . TIO $ runReaderT act backend
   where
@@ -224,6 +221,4 @@ filterToSqlExpr (Filter fs) row = go (Persist.FilterAnd fs)
     op Persist.Gt = (E.>.)
     op Persist.Ge = (E.>=.)
     
-    -- go (Persist.Filter fld (Persist.FilterValue val) Persist.Eq) = row E.^.fld E.==. E.val val
-    -- go 
 -- From: https://www.yesodweb.com/book/sql-joins
