@@ -154,6 +154,28 @@ projectList (EntityFieldWrapper entityField) entities =
 ----------------------------------------------------------------------------- 
 -- Experimenting with JOIN
 ----------------------------------------------------------------------------- 
+joinList
+  :: ( PersistQueryRead backend
+     , PersistRecordBackend row1 backend
+     , PersistRecordBackend row2 backend
+     , MonadReader backend m
+     , MonadTIO m
+     , E.PersistUniqueRead backend
+     , E.PersistField ty
+     , E.BackendCompatible E.SqlBackend backend
+     , E.BackendCompatible E.SqlBackend (E.BaseBackend backend)
+     )
+  => EntityFieldWrapper user row1 ty 
+  -> EntityFieldWrapper user row2 ty
+  -> TaggedT user m [(Entity row1, Entity row2)]
+joinList (EntityFieldWrapper f1) (EntityFieldWrapper f2) = do
+  backend <- ask
+  liftTIO . TIO $ runReaderT act backend
+  where
+    act = E.select $ E.from $ \(r1 `E.InnerJoin` r2) -> do
+            E.on $ r1 E.^. f1 E.==. r2 E.^. f2
+            return (r1, r2)
+
 joinWhere
   :: ( PersistQueryRead backend
      , PersistRecordBackend row1 backend
