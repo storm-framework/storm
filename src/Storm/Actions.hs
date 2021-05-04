@@ -154,8 +154,7 @@ projectList (EntityFieldWrapper entityField) entities =
 -----------------------------------------------------------------------------
 -- Experimenting with JOIN
 -----------------------------------------------------------------------------
--- TODO: Why do we assume here?
-{-@ assume joinList :: forall < pol1 :: Entity row1 -> user -> Bool
+{-@ joinList :: forall < pol1 :: Entity row1 -> user -> Bool
                               , pol2 :: Entity row2 -> user -> Bool
                               , sel1 :: Entity row1 -> typ -> Bool
                               , sel2 :: Entity row2 -> typ -> Bool
