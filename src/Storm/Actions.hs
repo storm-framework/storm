@@ -3,7 +3,16 @@
 
 {-# LANGUAGE GADTs #-}
 
-module Storm.Actions where
+module Storm.Actions
+  ( selectList
+  , selectFirst
+  , count
+  , project
+  , projectId
+  , projectList
+  , joinList
+  , joinWhere
+  ) where
 
 import           Data.Functor.Const             ( Const(..) )
 import           Control.Monad.Reader           ( MonadReader(..)
@@ -151,10 +160,9 @@ projectList
 projectList (EntityFieldWrapper entityField) entities =
   pure $ map (getConst . Persist.fieldLens entityField Const) entities
 
------------------------------------------------------------------------------
--- Experimenting with JOIN
------------------------------------------------------------------------------
-{-@ joinList :: forall < pol1 :: Entity row1 -> user -> Bool
+
+-- FIXME: Without the assume LH gives an error when checking Frankie.hs
+{-@ assume joinList :: forall < pol1 :: Entity row1 -> user -> Bool
                               , pol2 :: Entity row2 -> user -> Bool
                               , sel1 :: Entity row1 -> typ -> Bool
                               , sel2 :: Entity row2 -> typ -> Bool
@@ -165,7 +173,7 @@ projectList (EntityFieldWrapper entityField) entities =
                               >.
       {v :: (typ), r1 :: (Entity<invsel1 v> row1), r2 :: (Entity<invsel2 v> row2) |- user<l> <: user<pol1 r1>}
       {v :: (typ), r1 :: (Entity<invsel1 v> row1), r2 :: (Entity<invsel2 v> row2) |- user<l> <: user<pol2 r2>}
-      {v :: (typ), r1 :: (Entity<invsel1 v> row1), r2 :: (Entity<invsel2 v> row2) |- {r: (Entity row1, Entity row2) | r == (r1, r2)} <: (Entity row1, Entity row2)<join>}
+      {v :: (typ), r1 :: (Entity<invsel1 v> row1) |- Entity<invsel2 v> row2 <: Entity<join r1> row2}
 
          EntityFieldWrapper<pol1, sel1, invsel1> user row1 typ
       -> EntityFieldWrapper<pol2, sel2, invsel2> user row2 typ
@@ -178,12 +186,12 @@ joinList
      , MonadReader backend m
      , MonadTIO m
      , E.PersistUniqueRead backend
-     , E.PersistField ty
+     , E.PersistField typ
      , E.BackendCompatible E.SqlBackend backend
      , E.BackendCompatible E.SqlBackend (E.BaseBackend backend)
      )
-  => EntityFieldWrapper user row1 ty
-  -> EntityFieldWrapper user row2 ty
+  => EntityFieldWrapper user row1 typ
+  -> EntityFieldWrapper user row2 typ
   -> TaggedT user m [(Entity row1, Entity row2)]
 joinList f1 f2 = joinWhere f1 f2 trueF
 
@@ -199,10 +207,10 @@ joinList f1 f2 = joinWhere f1 f2 trueF
                                , wher :: Entity row1 -> Bool
                                , join :: Entity row1 -> Entity row2 -> Bool
                                >.
-      {v :: (typ), r1 :: (Entity<invsel1 v> row1), r1' :: {r1': (Entity<wher> row1) | r1' == r1}, r2 :: (Entity<invsel2 v> row2) |- user<l> <: user<polf r1>}
-      {v :: (typ), r1 :: (Entity<invsel1 v> row1), r1' :: {r1': (Entity<wher> row1) | r1' == r1}, r2 :: (Entity<invsel2 v> row2) |- user<l> <: user<pol1 r1>}
-      {v :: (typ), r1 :: (Entity<invsel1 v> row1), r1' :: {r1': (Entity<wher> row1) | r1' == r1}, r2 :: (Entity<invsel2 v> row2) |- user<l> <: user<pol2 r2>}
-      {v :: (typ), r1 :: (Entity<invsel1 v> row1), r2 :: (Entity<invsel2 v> row2) |- {r: (Entity row1, Entity row2) | r == (r1, r2)} <: (Entity row1, Entity row2)<join>}
+      {v :: (typ), r1 :: (Entity<invsel1 v, wher> row1), r2 :: (Entity<invsel2 v> row2) |- user<l> <: user<polf r1>}
+      {v :: (typ), r1 :: (Entity<invsel1 v, wher> row1), r2 :: (Entity<invsel2 v> row2) |- user<l> <: user<pol1 r1>}
+      {v :: (typ), r1 :: (Entity<invsel1 v, wher> row1), r2 :: (Entity<invsel2 v> row2) |- user<l> <: user<pol2 r2>}
+      {v :: (typ), r1 :: (Entity<invsel1 v> row1) |- Entity<invsel2 v> row2 <: Entity<join r1> row2}
 
          EntityFieldWrapper<pol1, sel1, invsel1> user row1 typ
       -> EntityFieldWrapper<pol2, sel2, invsel2> user row2 typ
