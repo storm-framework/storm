@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4593a0a269806dc1ff340d46236f6dcb2733ea047331368f44ace474133f517b
+-- hash: 167f048807ccc9c5a7ce5e0b8db38f20fde54f24205dec0b3a18fe34e8a574fa
 
 name:           storm
 version:        0.1.0.0
@@ -48,6 +48,7 @@ library
       Paths_storm
   hs-source-dirs:
       src
+  ghc-options: -fplugin=LiquidHaskell
   build-depends:
       MonadRandom
     , aeson
@@ -58,6 +59,7 @@ library
     , exceptions
     , frankie
     , liquid-base
+    , liquidhaskell >=0.8.10
     , mime-mail
     , monad-time
     , mtl
