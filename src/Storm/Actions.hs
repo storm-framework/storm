@@ -177,7 +177,7 @@ projectList (EntityFieldWrapper entityField) entities =
 
          EntityFieldWrapper<pol1, sel1, invsel1> user row1 typ
       -> EntityFieldWrapper<pol2, sel2, invsel2> user row2 typ
-      -> TaggedT user _ [(Entity row1, Entity row2)<join>]
+      -> TaggedT<l, {\_ -> False}> user _ [(Entity row1, Entity row2)<join>]
 @-}
 joinList
   :: ( PersistQueryRead backend
@@ -215,7 +215,7 @@ joinList f1 f2 = joinWhere f1 f2 trueF
          EntityFieldWrapper<pol1, sel1, invsel1> user row1 typ
       -> EntityFieldWrapper<pol2, sel2, invsel2> user row2 typ
       -> Filter<polf, wher> user row1
-      -> TaggedT user _ [(Entity<wher> row1, Entity row2)<join>]
+      -> TaggedT<l, {\_ -> False}> user _ [(Entity<wher> row1, Entity row2)<join>]
 @-}
 joinWhere
   :: ( PersistQueryRead backend
