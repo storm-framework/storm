@@ -3,6 +3,8 @@ cabal-version: 1.12
 -- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
+--
+-- hash: 167f048807ccc9c5a7ce5e0b8db38f20fde54f24205dec0b3a18fe34e8a574fa
 
 name:           storm
 version:        0.1.0.0
@@ -53,6 +55,7 @@ library
     , base64-bytestring
     , bytestring
     , either
+    , esqueleto
     , exceptions
     , frankie
     , liquid-base

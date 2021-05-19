@@ -159,3 +159,5 @@ assume (||:) ::
 @-}
 (<-.) :: PersistField typ => EntityFieldWrapper user record typ -> [typ] -> Filter user record
 (EntityFieldWrapper field) <-. value = Filter [field Persist.<-. value]
+
+

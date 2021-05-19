@@ -41,6 +41,7 @@ dependencies:
   - network
   - scrypt
   - MonadRandom
+  - esqueleto
   - liquid-base
   - liquidhaskell >= 0.8.10
 
