@@ -1,4 +1,4 @@
-# BINAH 
+# Storm 
 
 This repository contains the Storm code. 
 
